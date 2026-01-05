@@ -14,9 +14,11 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
+    "@tailwindcss/vite": "^4.1.18",
     "react": "^19.0.0",
     "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.2"
+    "react-router-dom": "^7.6.2",
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",

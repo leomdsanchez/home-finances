@@ -4,14 +4,8 @@ import { useSession } from "../../context/SessionContext";
 import supabase from "../../lib/supabaseClient";
 
 const SignUpPage = () => {
-  // ==============================
-  // If user is already logged in, redirect to home
-  // This logic is being repeated in SignIn and SignUp..
   const { session } = useSession();
   if (session) return <Navigate to="/" />;
-  // maybe we can create a wrapper component for these pages
-  // just like the ./router/AuthProtectedRoute.tsx? up to you.
-  // ==============================
   const [status, setStatus] = useState("");
   const [formValues, setFormValues] = useState({
     email: "",
@@ -36,39 +30,46 @@ const SignUpPage = () => {
   };
 
   return (
-    <main>
-      <Link className="home-link" to="/">
-        ◄ Home
-      </Link>
-      <form className="main-container" onSubmit={handleSubmit}>
-        <h1 className="header-text">Sign Up</h1>
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: "0.8rem",
-            color: "#777",
-          }}
-        >
-          Demo app, please don't use your real email or password
-        </p>
-        <input
-          name="email"
-          onChange={handleInputChange}
-          type="email"
-          placeholder="Email"
-        />
-        <input
-          name="password"
-          onChange={handleInputChange}
-          type="password"
-          placeholder="Password"
-        />
-        <button type="submit">Create Account</button>
-        <Link className="auth-link" to="/auth/sign-in">
-          Already have an account? Sign In
-        </Link>
-        {status && <p>{status}</p>}
-      </form>
+    <main className="page-shell">
+      <div className="page-grid max-w-2xl">
+        <div className="flex items-center justify-between">
+          <Link className="btn-ghost" to="/">
+            ◄ Voltar
+          </Link>
+          <p className="pill">Novo acesso</p>
+        </div>
+        <form className="form-card" onSubmit={handleSubmit}>
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold">Criar conta</h1>
+            <p className="muted">App de demonstração — use um email/senha seguros.</p>
+          </div>
+          <div className="space-y-3">
+            <input
+              className="input"
+              name="email"
+              onChange={handleInputChange}
+              type="email"
+              placeholder="Email"
+            />
+            <input
+              className="input"
+              name="password"
+              onChange={handleInputChange}
+              type="password"
+              placeholder="Senha"
+            />
+          </div>
+          <button className="btn w-full" type="submit" disabled={!!status}>
+            {status || "Criar conta"}
+          </button>
+          <p className="muted">
+            Já tem conta?{" "}
+            <Link className="text-emerald-300 hover:underline" to="/auth/sign-in">
+              Entrar
+            </Link>
+          </p>
+        </form>
+      </div>
     </main>
   );
 };

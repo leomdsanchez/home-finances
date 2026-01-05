@@ -4,14 +4,9 @@ import { useSession } from "../../context/SessionContext";
 import supabase from "../../lib/supabaseClient";
 
 const SignInPage = () => {
-  // ==============================
-  // If user is already logged in, redirect to home
-  // This logic is being repeated in SignIn and SignUp..
   const { session } = useSession();
   if (session) return <Navigate to="/" />;
-  // maybe we can create a wrapper component for these pages
-  // just like the ./router/AuthProtectedRoute.tsx? up to you.
-  // ==============================
+
   const [status, setStatus] = useState("");
   const [formValues, setFormValues] = useState({
     email: "",
@@ -35,30 +30,46 @@ const SignInPage = () => {
     setStatus("");
   };
   return (
-    <main>
-      <Link className="home-link" to="/">
-        ◄ Home
-      </Link>
-      <form className="main-container" onSubmit={handleSubmit}>
-        <h1 className="header-text">Sign In</h1>
-        <input
-          name="email"
-          onChange={handleInputChange}
-          type="email"
-          placeholder="Email"
-        />
-        <input
-          name="password"
-          onChange={handleInputChange}
-          type="password"
-          placeholder="Password"
-        />
-        <button type="submit">Login</button>
-        <Link className="auth-link" to="/auth/sign-up">
-          Don't have an account? Sign Up
+    <main className="page-shell flex items-center justify-center">
+      <div className="w-full max-w-md space-y-6">
+        <Link className="btn-ghost w-fit" to="/">
+          ◄ Voltar
         </Link>
-        {status && <p>{status}</p>}
-      </form>
+        <form
+          className="w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/70 space-y-4"
+          onSubmit={handleSubmit}
+        >
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold">Entrar</h1>
+            <p className="muted">Email e senha. Só isso.</p>
+          </div>
+          <div className="space-y-3">
+            <input
+              className="input"
+              name="email"
+              onChange={handleInputChange}
+              type="email"
+              placeholder="Email"
+            />
+            <input
+              className="input"
+              name="password"
+              onChange={handleInputChange}
+              type="password"
+              placeholder="Senha"
+            />
+          </div>
+          <button className="btn w-full" type="submit" disabled={!!status}>
+            {status || "Entrar"}
+          </button>
+          <p className="muted text-center">
+            Não tem conta?{" "}
+            <Link className="text-[var(--color-accent)] hover:underline" to="/auth/sign-up">
+              Criar conta
+            </Link>
+          </p>
+        </form>
+      </div>
     </main>
   );
 };

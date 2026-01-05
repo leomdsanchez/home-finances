@@ -1,121 +1,42 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Inter", sans-serif !important;
-}
-body {
-  background-color: #1c1c1c; /* Darker background, closer to Supabase style */
-  color: white;
-}
-main {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 10vh;
-}
-a {
-  text-decoration: none;
-}
-.header-text {
-  display: flex;
-  gap: 0.5em;
-  align-items: center;
-  padding: 0.5em 1em;
-  font-weight: bold;
-  background: none;
-  text-align: center;
-}
-.main-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background-color: #2a2a2a; /* Slightly lighter than body, but still dark */
-  padding: 2em 2em;
-  width: 100%;
-  max-width: 500px;
-  border-radius: 4px; /* Slightly rounded corners */
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.2);
-  border-top: 5px;
-  border-width: 10px 0px 0px 0px;
-  border-style: solid;
-  border-color: #3ecf8e; /* Supabase green */
-}
-#github-repo-link {
-  display: flex;
-  gap: 0.5em;
-  margin-top: 0;
-  align-items: center;
-  padding: 0.5em 1em;
-  font-weight: bold;
-  background: none;
-  cursor: pointer;
-  color: #3ecf8e; /* Supabase green */
-}
-#github-repo-link:hover {
-  background-color: rgba(
-    62,
-    207,
-    142,
-    0.1
-  ); /* Supabase green with low opacity */
-}
-input {
-  padding: 1rem;
-  border-radius: 4px;
-  outline: none;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
-  background-color: #3a3a3a; /* Slightly lighter than container background */
-  border: 1px solid #4a4a4a;
-  font-size: 1rem;
-  color: white;
-  margin-top: 7px;
-  width: 300px;
-}
-button,
-a {
-  font-size: 16px;
-  padding: 1em;
-  background: none;
-  cursor: pointer;
-  color: white;
-  background: #229f65; /* Supabase green */
-  border: none;
-  border-radius: 4px;
-  transition: background-color 0.3s;
-  width: 300px;
-  text-align: center;
-  margin-top: 1em;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 40px;
-  font-weight: bold;
-  border: 1px solid #33b379; /* Supabase green */
+@import "tailwindcss";
+
+:root {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 }
 
-a {
-  border: none;
+@layer base {
+  * {
+    @apply box-border;
+  }
+  body {
+    @apply min-h-screen bg-slate-50 text-slate-900 antialiased;
+    font-family: var(--font-sans);
+  }
+  a {
+    @apply text-inherit no-underline;
+  }
 }
-button:hover,
-a:hover {
-  background: #2ebd80; /* Slightly darker Supabase green for hover */
-}
-.home-link {
-  margin-bottom: 1em;
-}
-.auth-link {
-  background: transparent;
-  color: #3ecf8e; /* Supabase green */
-}
-.auth-link:hover {
-  background: transparent;
-  text-decoration: underline;
-}
-#divider {
-  width: 70%;
-  height: 2px;
-  background-color: #3ecf8e; /* Supabase green */
-  margin: 1em 0;
-  border-radius: 100%;
+
+@layer components {
+  .page-shell {
+    @apply min-h-screen flex items-center justify-center bg-gradient-to-b from-white via-slate-50 to-white px-4 py-10;
+  }
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/70;
+  }
+  .muted {
+    @apply text-sm text-slate-500;
+  }
+  .pill {
+    @apply inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-blue-200 bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+  }
+  .input {
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-1 focus:ring-offset-white;
+  }
 }

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fromDbAccount, toDbAccount, type NewAccountInput } from "../mappers/account";
+import { fromDbAccount, toDbAccount, type DbInsertAccount, type NewAccountInput } from "../mappers/account";
 import type { Account } from "../types/domain";
 
 export const createAccount = async (

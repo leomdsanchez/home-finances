@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fromDbBudget, toDbBudget, type NewBudgetInput } from "../mappers/budget";
+import { fromDbBudget, toDbBudget, type DbInsertBudget, type NewBudgetInput } from "../mappers/budget";
 import type { Budget } from "../types/domain";
 
 export const createBudget = async (

@@ -4,51 +4,51 @@ export type TransactionType = "income" | "expense";
 export type Organization = {
   id: string;
   name: string;
-  base_currency: string;
-  created_at: string;
+  baseCurrency: string;
+  createdAt: string;
 };
 
 export type OrganizationMember = {
-  organization_id: string;
-  user_id: string;
-  joined_at: string;
+  organizationId: string;
+  userId: string;
+  joinedAt: string;
 };
 
 export type Account = {
   id: string;
-  organization_id: string;
+  organizationId: string;
   name: string;
   currency: string;
   type: AccountType;
-  created_at: string;
+  createdAt: string;
 };
 
 export type Category = {
   id: string;
-  organization_id: string;
+  organizationId: string;
   name: string;
 };
 
 export type Transaction = {
   id: string;
-  organization_id: string;
-  account_id: string;
-  category_id: string;
+  organizationId: string;
+  accountId: string;
+  categoryId: string;
   type: TransactionType;
   amount: number;
   currency: string;
   date: string;
   note: string | null;
-  transfer_id: string | null;
-  exchange_rate: number;
-  created_at: string;
+  transferId: string | null;
+  exchangeRate: number;
+  createdAt: string;
 };
 
 export type Budget = {
   id: string;
-  organization_id: string;
+  organizationId: string;
   month: string;
-  category_id: string | null;
+  categoryId: string | null;
   amount: number;
   currency: string;
 };

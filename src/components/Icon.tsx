@@ -15,6 +15,10 @@ import {
   Tag,
   Wallet,
   Settings,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  Copy,
   type LucideProps,
 } from "lucide-react";
 
@@ -34,7 +38,11 @@ type IconName =
   | "credit-card"
   | "tag"
   | "wallet"
-  | "settings";
+  | "settings"
+  | "plus"
+  | "trash"
+  | "arrow-left"
+  | "copy";
 
 const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   mail: Mail,
@@ -53,6 +61,10 @@ const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   tag: Tag,
   wallet: Wallet,
   settings: Settings,
+  plus: Plus,
+  trash: Trash2,
+  "arrow-left": ArrowLeft,
+  copy: Copy,
 };
 
 interface IconProps extends LucideProps {

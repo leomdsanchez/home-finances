@@ -3,7 +3,6 @@ import { randomUUID } from "crypto";
 import {
   anonTestClient,
   serviceRoleClient,
-  TEST_USER_PASSWORD,
 } from "../setup/testEnv";
 import {
   cleanupTestArtifacts,

@@ -1,4 +1,5 @@
-import { defineConfig } from "vitest/config";
+/// <reference types="vitest" />
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -37,5 +38,8 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["tests/setup/testEnv.ts"],
     testTimeout: 20000,
+    sequence: {
+      concurrent: false,
+    },
   },
 });

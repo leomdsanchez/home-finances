@@ -4,6 +4,8 @@ import type {
   AddUserToOrganizationParams,
   CreateOrganizationParams,
   CreateUserParams,
+  RemoveUserFromOrganizationParams,
+  UpdateOrganizationParams,
 } from "../types/serviceInputs";
 
 const mapOrganization = (row: {
@@ -116,4 +118,58 @@ export const addUserToOrganization = async (
   }
 
   return mapMembership(existing);
+};
+
+export const updateOrganization = async (
+  client: SupabaseClient,
+  params: UpdateOrganizationParams
+): Promise<Organization> => {
+  const { organizationId, ...fields } = params;
+  const updates: Partial<{ name: string; base_currency: string }> = {};
+  if (fields.name) updates.name = fields.name;
+  if (fields.baseCurrency) updates.base_currency = fields.baseCurrency;
+
+  const { data, error } = await client
+    .from("organizations")
+    .update(updates)
+    .eq("id", organizationId)
+    .select("id, name, base_currency, created_at")
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to update organization ${organizationId}: ${error?.message ?? "unknown"}`
+    );
+  }
+
+  return mapOrganization(data);
+};
+
+export const removeUserFromOrganization = async (
+  client: SupabaseClient,
+  params: RemoveUserFromOrganizationParams
+): Promise<void> => {
+  const { organizationId, userId } = params;
+
+  const { error } = await client
+    .from("organization_members")
+    .delete()
+    .eq("organization_id", organizationId)
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error(
+      `Failed to remove user ${userId} from organization ${organizationId}: ${error.message}`
+    );
+  }
+};
+
+export const deleteOrganization = async (
+  client: SupabaseClient,
+  organizationId: string
+): Promise<void> => {
+  const { error } = await client.from("organizations").delete().eq("id", organizationId);
+  if (error) {
+    throw new Error(`Failed to delete organization ${organizationId}: ${error.message}`);
+  }
 };

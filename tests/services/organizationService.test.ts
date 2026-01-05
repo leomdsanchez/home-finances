@@ -14,6 +14,9 @@ import {
   addUserToOrganization,
   createOrganization,
   createUser,
+  deleteOrganization,
+  removeUserFromOrganization,
+  updateOrganization,
 } from "../../src/services/organizationService";
 
 describe("organizationService", () => {
@@ -113,6 +116,54 @@ describe("organizationService", () => {
       });
       await cleanupTestArtifacts({
         userId: member.id,
+      });
+    }
+  });
+
+  it("updates org data and removes membership", async () => {
+    const email = `owner-${randomUUID()}@example.com`;
+    const password = TEST_USER_PASSWORD;
+
+    const user = await createUser(serviceRoleClient, {
+      email,
+      password,
+    });
+    const organization = await createOrganization(serviceRoleClient, {
+      name: `Org-${randomUUID()}`,
+      baseCurrency: "USD",
+    });
+    await addUserToOrganization(serviceRoleClient, {
+      organizationId: organization.id,
+      userId: user.id,
+    });
+
+    const updated = await updateOrganization(serviceRoleClient, {
+      organizationId: organization.id,
+      name: "Updated Org",
+      baseCurrency: "EUR",
+    });
+
+    await removeUserFromOrganization(serviceRoleClient, {
+      organizationId: organization.id,
+      userId: user.id,
+    });
+
+    await deleteOrganization(serviceRoleClient, organization.id);
+
+    try {
+      await signInTestUser(email, password);
+      const membership = await fetchMembership(
+        organization.id,
+        user.id,
+        anonTestClient
+      );
+      expect(updated.name).toBe("Updated Org");
+      expect(updated.baseCurrency).toBe("EUR");
+      expect(membership).toBeNull();
+    } finally {
+      await anonTestClient.auth.signOut();
+      await cleanupTestArtifacts({
+        userId: user.id,
       });
     }
   });

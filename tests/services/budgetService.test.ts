@@ -22,6 +22,8 @@ describe("budgetService", () => {
   it("creates, updates and deletes budgets for an organization", async () => {
     const user = await createTestUser();
     const organization = await createOrganizationForUser(user.id);
+    const outsider = await createTestUser();
+    const outsiderOrg = await createOrganizationForUser(outsider.id);
 
     const category = await createCategory(serviceRoleClient, {
       organizationId: organization.id,
@@ -62,10 +64,20 @@ describe("budgetService", () => {
       );
     } finally {
       await anonTestClient.auth.signOut();
-      await cleanupTestArtifacts({
-        organizationId: organization.id,
-        userId: user.id,
-      });
     }
+
+    await signInTestUser(outsider.email, outsider.password);
+    const outsiderView = await listBudgets(anonTestClient, organization.id);
+    expect(outsiderView.length).toBe(0);
+    await anonTestClient.auth.signOut();
+
+    await cleanupTestArtifacts({
+      organizationId: organization.id,
+      userId: user.id,
+    });
+    await cleanupTestArtifacts({
+      organizationId: outsiderOrg.id,
+      userId: outsider.id,
+    });
   });
 });

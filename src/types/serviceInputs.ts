@@ -15,6 +15,17 @@ export type AddUserToOrganizationParams = {
   organizationId: string;
 };
 
+export type UpdateOrganizationParams = {
+  organizationId: string;
+  name?: string;
+  baseCurrency?: string;
+};
+
+export type RemoveUserFromOrganizationParams = {
+  organizationId: string;
+  userId: string;
+};
+
 export type CreateTransferParams = {
   organizationId: string;
   fromAccountId: string;

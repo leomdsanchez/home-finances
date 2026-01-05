@@ -20,16 +20,23 @@ describe("categoryService", () => {
     const user = await createTestUser();
     const organization = await createOrganizationForUser(user.id);
 
-    const category = await createCategory(serviceRoleClient, {
+    const categoryZ = await createCategory(serviceRoleClient, {
       organizationId: organization.id,
-      name: `cat-${randomUUID()}`,
+      name: `z-cat-${randomUUID()}`,
+    });
+    const categoryA = await createCategory(serviceRoleClient, {
+      organizationId: organization.id,
+      name: `a-cat-${randomUUID()}`,
     });
 
     try {
       await signInTestUser(user.email, user.password);
 
       const categories = await listCategories(anonTestClient, organization.id);
-      expect(categories.find((c) => c.id === category.id)).toBeDefined();
+      expect(categories.map((c) => c.id)).toEqual([categoryA.id, categoryZ.id]);
+      expect(
+        categories.every((c) => c.organizationId === organization.id)
+      ).toBe(true);
     } finally {
       await anonTestClient.auth.signOut();
       await cleanupTestArtifacts({

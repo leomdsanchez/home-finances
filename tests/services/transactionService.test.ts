@@ -10,16 +10,9 @@ import {
   createTestUser,
   signInTestUser,
 } from "../setup/testDataFactory";
-import {
-  createAccount,
-} from "../../src/services/accountService";
-import {
-  createCategory,
-} from "../../src/services/categoryService";
-import {
-  createTransfer,
-  listTransactions,
-} from "../../src/services/transactionService";
+import { createAccount } from "../../src/services/accountService";
+import { createCategory } from "../../src/services/categoryService";
+import { createTransfer, listTransactions } from "../../src/services/transactionService";
 
 describe("transactionService (transfer)", () => {
   it("cria transferência na mesma moeda", async () => {
@@ -68,6 +61,7 @@ describe("transactionService (transfer)", () => {
       expect(toTx?.amount).toBe(100);
       expect(fromTx?.currency).toBe("USD");
       expect(toTx?.currency).toBe("USD");
+      expect(txs.map((t) => t.transferId)).toContain(transfer.from.transferId);
     } finally {
       await anonTestClient.auth.signOut();
       await cleanupTestArtifacts({
@@ -125,6 +119,7 @@ describe("transactionService (transfer)", () => {
       expect(toTx?.exchangeRate).toBeCloseTo(5.2, 2);
       expect(fromTx?.currency).toBe("USD");
       expect(toTx?.currency).toBe("BRL");
+      expect(txs.map((t) => t.transferId)).toContain(transfer.to.transferId);
     } finally {
       await anonTestClient.auth.signOut();
       await cleanupTestArtifacts({

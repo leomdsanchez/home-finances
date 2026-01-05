@@ -23,11 +23,18 @@ describe("budgetService", () => {
       name: `cat-${randomUUID()}`,
     });
 
-    const budget = await createBudget(serviceRoleClient, {
+    const budgetJan = await createBudget(serviceRoleClient, {
       organizationId: organization.id,
       month: "2025-01",
       categoryId: category.id,
       amount: 1000,
+      currency: "USD",
+    });
+    const budgetFeb = await createBudget(serviceRoleClient, {
+      organizationId: organization.id,
+      month: "2025-02",
+      categoryId: category.id,
+      amount: 1200,
       currency: "USD",
     });
 
@@ -35,7 +42,10 @@ describe("budgetService", () => {
       await signInTestUser(user.email, user.password);
 
       const budgets = await listBudgets(anonTestClient, organization.id);
-      expect(budgets.find((b) => b.id === budget.id)).toBeDefined();
+      expect(budgets.map((b) => b.id)).toEqual([budgetJan.id, budgetFeb.id]);
+      expect(budgets.every((b) => b.organizationId === organization.id)).toBe(
+        true
+      );
     } finally {
       await anonTestClient.auth.signOut();
       await cleanupTestArtifacts({

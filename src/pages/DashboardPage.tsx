@@ -1,29 +1,145 @@
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Icon } from "../components/Icon";
 import { useSession } from "../context/SessionContext";
+import supabase from "../lib/supabaseClient";
+import type { IconName } from "../components/Icon";
 
-const ProtectedPage = () => {
+const EmptyState = ({
+  icon,
+  text,
+}: {
+  icon: IconName;
+  text: string;
+}) => (
+  <div className="flex flex-col items-center gap-2 text-slate-500">
+    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm">
+      <Icon name={icon} className="h-5 w-5" />
+    </span>
+    <p className="text-sm">{text}</p>
+  </div>
+);
+
+type QuickAction = {
+  key: "manual" | "camera" | "mic";
+  label: string;
+  hint: string;
+  icon: "hand" | "camera" | "mic";
+};
+
+const actions: QuickAction[] = [
+  {
+    key: "manual",
+    label: "Lançamento manual",
+    hint: "Digita e salva",
+    icon: "hand",
+  },
+  {
+    key: "camera",
+    label: "Com imagem",
+    hint: "Fotografa o recibo",
+    icon: "camera",
+  },
+  {
+    key: "mic",
+    label: "Com áudio",
+    hint: "Fala e converte",
+    icon: "mic",
+  },
+];
+
+const DashboardPage = () => {
   const { session } = useSession();
+  const navigate = useNavigate();
+  const [showRecents, setShowRecents] = useState(false);
+
+  const displayName = useMemo(() => {
+    return (
+      session?.user.user_metadata?.name ||
+      session?.user.email?.split("@")[0] ||
+      "Você"
+    );
+  }, [session]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/", { replace: true });
+  };
+
+  const handleAction = (key: QuickAction["key"]) => {
+    // Aqui entram as navegações futuras para cada fluxo.
+    console.info("Ação selecionada:", key);
+  };
+
   return (
-    <main className="page-shell">
-      <div className="page-grid max-w-3xl">
-        <Link className="btn-ghost w-fit" to="/">
-          ◄ Voltar
-        </Link>
-        <section className="card space-y-3">
-          <h1 className="text-2xl font-semibold">Página protegida</h1>
-          <p className="muted">
-            Somente usuários autenticados podem ver esta área. Use como base para o dashboard e
-            demais telas do app.
-          </p>
-          <div className="rounded-lg border border-white/10 bg-black/10 px-4 py-3">
-            <p className="text-sm text-slate-200">
-              Usuário logado: {session?.user.email ?? "Nenhum"}
+    <main className="page-shell items-start">
+      <div className="flex w-full max-w-md flex-col gap-5 pt-1">
+        <header className="flex items-center justify-between pt-2">
+          <div>
+            <p className="text-xs uppercase tracking-[0.08em] text-slate-500">
+              Olá
             </p>
+            <p className="text-xl font-semibold text-slate-900">{displayName}</p>
           </div>
+          <button
+            onClick={handleSignOut}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            aria-label="Sair"
+          >
+            <Icon name="logout" className="h-5 w-5" />
+          </button>
+        </header>
+
+        <section className="card space-y-4">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-slate-800">Adicionar despesa</p>
+            <p className="muted">Escolha o jeito mais rápido pra você.</p>
+          </div>
+          <div className="grid gap-2">
+            {actions.map((action) => (
+              <button
+                key={action.key}
+                onClick={() => handleAction(action.key)}
+                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+                    <Icon name={action.icon} className="h-5 w-5" />
+                  </span>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-slate-900">{action.label}</p>
+                    <p className="text-xs text-slate-500">{action.hint}</p>
+                  </div>
+                </div>
+                <Icon name="arrow-right" className="h-4 w-4 text-slate-300" />
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="card space-y-3">
+          <button
+            className="flex w-full items-center justify-between text-left"
+            onClick={() => setShowRecents((prev) => !prev)}
+          >
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Últimos lançamentos</p>
+              <p className="muted">Toque para visualizar.</p>
+            </div>
+            <Icon
+              name="arrow-right"
+              className={`h-4 w-4 text-slate-300 transition ${showRecents ? "rotate-90" : ""}`}
+            />
+          </button>
+          {showRecents ? (
+            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
+              <EmptyState icon="mic" text="Nenhum lançamento ainda. Adicione o primeiro." />
+            </div>
+          ) : null}
         </section>
       </div>
     </main>
   );
 };
 
-export default ProtectedPage;
+export default DashboardPage;

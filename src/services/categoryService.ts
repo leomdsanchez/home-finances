@@ -1,10 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  fromDbCategory,
-  toDbCategory,
-  type Category,
-  type NewCategoryInput,
-} from "../mappers/category";
+import { fromDbCategory, toDbCategory, type NewCategoryInput } from "../mappers/category";
+import type { Category } from "../types/domain";
 
 export const createCategory = async (
   client: SupabaseClient,

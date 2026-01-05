@@ -1,20 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Organization, OrganizationMember } from "../types/domain";
-
-type CreateUserParams = {
-  email: string;
-  password: string;
-};
-
-type CreateOrganizationParams = {
-  name: string;
-  baseCurrency?: string;
-};
-
-type AddUserToOrganizationParams = {
-  userId: string;
-  organizationId: string;
-};
+import type {
+  AddUserToOrganizationParams,
+  CreateOrganizationParams,
+  CreateUserParams,
+} from "../types/serviceInputs";
 
 const mapOrganization = (row: {
   id: string;

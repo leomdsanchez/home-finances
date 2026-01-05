@@ -38,6 +38,16 @@ type MenuItemKey =
 
 type MenuItem = { key: MenuItemKey; label: string; icon: IconName };
 type MenuEntry = MenuItem | { key: "divider" };
+const menuEntries: MenuEntry[] = [
+  { key: "perfil", label: "Perfil", icon: "user" },
+  { key: "organizacao", label: "Organização", icon: "building" },
+  { key: "contas", label: "Contas", icon: "credit-card" },
+  { key: "categorias", label: "Categorias", icon: "tag" },
+  { key: "orcamentos", label: "Orçamentos", icon: "wallet" },
+  { key: "config", label: "Configurações", icon: "settings" },
+  { key: "divider" },
+  { key: "logout", label: "Sair", icon: "logout" },
+];
 
 const actions: QuickAction[] = [
   {
@@ -82,8 +92,15 @@ const DashboardPage = () => {
       navigate("/", { replace: true });
       return;
     }
-    // Futuro: navegar para rotas específicas
-    console.info("Selecionado:", key);
+    const routes: Partial<Record<MenuItemKey, string>> = {
+      perfil: "/perfil",
+      organizacao: "/organizacao",
+      categorias: "/categorias",
+    };
+    const target = routes[key];
+    if (target) {
+      navigate(target);
+    }
   };
 
   const handleAction = (key: QuickAction["key"]) => {
@@ -113,6 +130,7 @@ const DashboardPage = () => {
           </div>
           <div className="relative">
             <button
+              type="button"
               onClick={() => setMenuOpen((prev) => !prev)}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               aria-label="Menu"
@@ -124,22 +142,12 @@ const DashboardPage = () => {
                 ref={menuRef}
                 className="absolute right-0 mt-2 w-56 space-y-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-200/80"
               >
-                {(
-                  [
-                    { key: "perfil", label: "Perfil", icon: "user" },
-                    { key: "organizacao", label: "Organização", icon: "building" },
-                    { key: "contas", label: "Contas", icon: "credit-card" },
-                    { key: "categorias", label: "Categorias", icon: "tag" },
-                    { key: "orcamentos", label: "Orçamentos", icon: "wallet" },
-                    { key: "config", label: "Configurações", icon: "settings" },
-                    { key: "divider" },
-                    { key: "logout", label: "Sair", icon: "logout" },
-                  ] as MenuEntry[]
-                ).map((item, idx) =>
+                {menuEntries.map((item, idx) =>
                   item.key === "divider" ? (
                     <div key={`div-${idx}`} className="mx-1 my-1 h-px bg-slate-200" />
                   ) : (
                     <button
+                      type="button"
                       key={item.key}
                       onClick={() => handleMenuSelect(item.key)}
                       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-800 transition hover:bg-slate-50"

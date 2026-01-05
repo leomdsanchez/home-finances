@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import supabase from "../supabase";
+import supabase from "../lib/supabaseClient";
 import LoadingPage from "../pages/LoadingPage";
 import { Session } from "@supabase/supabase-js";
 

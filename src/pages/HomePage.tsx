@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import supabase from "../supabase";
+import supabase from "../lib/supabaseClient";
 import { useSession } from "../context/SessionContext";
 
 const HomePage = () => {

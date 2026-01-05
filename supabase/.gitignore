@@ -1,0 +1,14 @@
+# Local Supabase artifacts
+.branches
+.temp
+docker
+volumes
+
+# Supabase
+.branches
+.temp
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local

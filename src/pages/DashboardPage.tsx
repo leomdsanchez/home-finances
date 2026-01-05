@@ -27,6 +27,18 @@ type QuickAction = {
   icon: "keyboard" | "camera" | "mic";
 };
 
+type MenuItemKey =
+  | "perfil"
+  | "organizacao"
+  | "contas"
+  | "categorias"
+  | "orcamentos"
+  | "config"
+  | "logout";
+
+type MenuItem = { key: MenuItemKey; label: string; icon: IconName };
+type MenuEntry = MenuItem | { key: "divider" };
+
 const actions: QuickAction[] = [
   {
     key: "manual",
@@ -63,12 +75,7 @@ const DashboardPage = () => {
     );
   }, [session]);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/", { replace: true });
-  };
-
-  const handleMenuSelect = async (key: string) => {
+  const handleMenuSelect = async (key: MenuItemKey) => {
     setMenuOpen(false);
     if (key === "logout") {
       await supabase.auth.signOut();
@@ -117,17 +124,19 @@ const DashboardPage = () => {
                 ref={menuRef}
                 className="absolute right-0 mt-2 w-56 space-y-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-200/80"
               >
-                {[
-                  { key: "perfil", label: "Perfil", icon: "user" as const },
-                  { key: "organizacao", label: "Organização", icon: "building" as const },
-                  { key: "contas", label: "Contas", icon: "credit-card" as const },
-                  { key: "categorias", label: "Categorias", icon: "tag" as const },
-                  { key: "orcamentos", label: "Orçamentos", icon: "wallet" as const },
-                  { key: "config", label: "Configurações", icon: "settings" as const },
-                  "divider",
-                  { key: "logout", label: "Sair", icon: "logout" as const },
-                ].map((item, idx) =>
-                  item === "divider" ? (
+                {(
+                  [
+                    { key: "perfil", label: "Perfil", icon: "user" },
+                    { key: "organizacao", label: "Organização", icon: "building" },
+                    { key: "contas", label: "Contas", icon: "credit-card" },
+                    { key: "categorias", label: "Categorias", icon: "tag" },
+                    { key: "orcamentos", label: "Orçamentos", icon: "wallet" },
+                    { key: "config", label: "Configurações", icon: "settings" },
+                    { key: "divider" },
+                    { key: "logout", label: "Sair", icon: "logout" },
+                  ] as MenuEntry[]
+                ).map((item, idx) =>
+                  item.key === "divider" ? (
                     <div key={`div-${idx}`} className="mx-1 my-1 h-px bg-slate-200" />
                   ) : (
                     <button

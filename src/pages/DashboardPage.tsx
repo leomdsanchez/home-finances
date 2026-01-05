@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { useSession } from "../context/SessionContext";
@@ -24,7 +24,7 @@ type QuickAction = {
   key: "manual" | "camera" | "mic";
   label: string;
   hint: string;
-  icon: "hand" | "camera" | "mic";
+  icon: "keyboard" | "camera" | "mic";
 };
 
 const actions: QuickAction[] = [
@@ -32,7 +32,7 @@ const actions: QuickAction[] = [
     key: "manual",
     label: "Lançamento manual",
     hint: "Digita e salva",
-    icon: "hand",
+    icon: "keyboard",
   },
   {
     key: "camera",
@@ -52,6 +52,8 @@ const DashboardPage = () => {
   const { session } = useSession();
   const navigate = useNavigate();
   const [showRecents, setShowRecents] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const displayName = useMemo(() => {
     return (
@@ -66,28 +68,81 @@ const DashboardPage = () => {
     navigate("/", { replace: true });
   };
 
+  const handleMenuSelect = async (key: string) => {
+    setMenuOpen(false);
+    if (key === "logout") {
+      await supabase.auth.signOut();
+      navigate("/", { replace: true });
+      return;
+    }
+    // Futuro: navegar para rotas específicas
+    console.info("Selecionado:", key);
+  };
+
   const handleAction = (key: QuickAction["key"]) => {
     // Aqui entram as navegações futuras para cada fluxo.
     console.info("Ação selecionada:", key);
   };
 
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (menuOpen && menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [menuOpen]);
+
   return (
     <main className="page-shell items-start">
       <div className="flex w-full max-w-md flex-col gap-5 pt-1">
-        <header className="flex items-center justify-between pt-2">
+        <header className="relative flex items-center justify-between pt-2">
           <div>
             <p className="text-xs uppercase tracking-[0.08em] text-slate-500">
               Olá
             </p>
             <p className="text-xl font-semibold text-slate-900">{displayName}</p>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-            aria-label="Sair"
-          >
-            <Icon name="logout" className="h-5 w-5" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              aria-label="Menu"
+            >
+              <Icon name="more" className="h-5 w-5" />
+            </button>
+            {menuOpen ? (
+              <div
+                ref={menuRef}
+                className="absolute right-0 mt-2 w-56 space-y-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-200/80"
+              >
+                {[
+                  { key: "perfil", label: "Perfil", icon: "user" as const },
+                  { key: "organizacao", label: "Organização", icon: "building" as const },
+                  { key: "contas", label: "Contas", icon: "credit-card" as const },
+                  { key: "categorias", label: "Categorias", icon: "tag" as const },
+                  { key: "orcamentos", label: "Orçamentos", icon: "wallet" as const },
+                  { key: "config", label: "Configurações", icon: "settings" as const },
+                  "divider",
+                  { key: "logout", label: "Sair", icon: "logout" as const },
+                ].map((item, idx) =>
+                  item === "divider" ? (
+                    <div key={`div-${idx}`} className="mx-1 my-1 h-px bg-slate-200" />
+                  ) : (
+                    <button
+                      key={item.key}
+                      onClick={() => handleMenuSelect(item.key)}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-800 transition hover:bg-slate-50"
+                    >
+                      <Icon name={item.icon} className="h-4 w-4 text-slate-500" />
+                      <span className="flex-1 text-left">{item.label}</span>
+                    </button>
+                  )
+                )}
+              </div>
+            ) : null}
+          </div>
         </header>
 
         <section className="card space-y-4">

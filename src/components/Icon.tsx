@@ -6,7 +6,15 @@ import {
   LogOut,
   Mail,
   Mic,
+  Keyboard,
   Loader2,
+  MoreVertical,
+  User,
+  Building2,
+  CreditCard,
+  Tag,
+  Wallet,
+  Settings,
   type LucideProps,
 } from "lucide-react";
 
@@ -18,7 +26,15 @@ type IconName =
   | "camera"
   | "mic"
   | "logout"
-  | "loader";
+  | "loader"
+  | "keyboard"
+  | "more"
+  | "user"
+  | "building"
+  | "credit-card"
+  | "tag"
+  | "wallet"
+  | "settings";
 
 const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   mail: Mail,
@@ -29,6 +45,14 @@ const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   mic: Mic,
   logout: LogOut,
   loader: Loader2,
+  keyboard: Keyboard,
+  more: MoreVertical,
+  user: User,
+  building: Building2,
+  "credit-card": CreditCard,
+  tag: Tag,
+  wallet: Wallet,
+  settings: Settings,
 };
 
 interface IconProps extends LucideProps {

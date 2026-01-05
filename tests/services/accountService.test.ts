@@ -10,10 +10,15 @@ import {
   createTestUser,
   signInTestUser,
 } from "../setup/testDataFactory";
-import { createAccount, listAccounts } from "../../src/services/accountService";
+import {
+  createAccount,
+  listAccounts,
+  updateAccount,
+  deleteAccount,
+} from "../../src/services/accountService";
 
 describe("accountService", () => {
-  it("creates and lists accounts for an organization", async () => {
+  it("creates, updates and deletes accounts for an organization", async () => {
     const user = await createTestUser();
     const organization = await createOrganizationForUser(user.id);
 
@@ -31,11 +36,20 @@ describe("accountService", () => {
       type: "bank",
     });
 
+    const updatedA = await updateAccount(serviceRoleClient, {
+      organizationId: organization.id,
+      accountId: accountA.id,
+      name: "Updated A",
+    });
+
+    await deleteAccount(serviceRoleClient, organization.id, accountB.id);
+
     try {
       await signInTestUser(user.email, user.password);
 
       const accounts = await listAccounts(anonTestClient, organization.id);
-      expect(accounts.map((a) => a.id)).toEqual([accountA.id, accountB.id]);
+      expect(accounts.map((a) => a.id)).toEqual([updatedA.id]);
+      expect(accounts[0]?.name).toBe("Updated A");
       expect(accounts.every((a) => a.organizationId === organization.id)).toBe(
         true
       );

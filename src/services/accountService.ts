@@ -37,3 +37,50 @@ export const listAccounts = async (
 
   return data.map(fromDbAccount);
 };
+
+export const updateAccount = async (
+  client: SupabaseClient,
+  params: {
+    organizationId: string;
+    accountId: string;
+    name?: string;
+    currency?: string;
+    type?: Account["type"];
+  }
+): Promise<Account> => {
+  const { organizationId, accountId, ...fields } = params;
+  const updates: Partial<DbInsertAccount> = {};
+  if (fields.name) updates.name = fields.name;
+  if (fields.currency) updates.currency = fields.currency;
+  if (fields.type) updates.type = fields.type;
+
+  const { data, error } = await client
+    .from("accounts")
+    .update(updates)
+    .eq("id", accountId)
+    .eq("organization_id", organizationId)
+    .select("id, organization_id, name, currency, type, created_at")
+    .single();
+
+  if (error || !data) {
+    throw new Error(`Failed to update account ${accountId}: ${error?.message ?? "unknown"}`);
+  }
+
+  return fromDbAccount(data);
+};
+
+export const deleteAccount = async (
+  client: SupabaseClient,
+  organizationId: string,
+  accountId: string
+): Promise<void> => {
+  const { error } = await client
+    .from("accounts")
+    .delete()
+    .eq("id", accountId)
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    throw new Error(`Failed to delete account ${accountId}: ${error.message}`);
+  }
+};

@@ -35,3 +35,40 @@ export const listCategories = async (
 
   return data.map(fromDbCategory);
 };
+
+export const updateCategory = async (
+  client: SupabaseClient,
+  params: { organizationId: string; categoryId: string; name: string }
+): Promise<Category> => {
+  const { organizationId, categoryId, name } = params;
+
+  const { data, error } = await client
+    .from("categories")
+    .update({ name })
+    .eq("id", categoryId)
+    .eq("organization_id", organizationId)
+    .select("id, organization_id, name")
+    .single();
+
+  if (error || !data) {
+    throw new Error(`Failed to update category ${categoryId}: ${error?.message ?? "unknown"}`);
+  }
+
+  return fromDbCategory(data);
+};
+
+export const deleteCategory = async (
+  client: SupabaseClient,
+  organizationId: string,
+  categoryId: string
+): Promise<void> => {
+  const { error } = await client
+    .from("categories")
+    .delete()
+    .eq("id", categoryId)
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    throw new Error(`Failed to delete category ${categoryId}: ${error.message}`);
+  }
+};

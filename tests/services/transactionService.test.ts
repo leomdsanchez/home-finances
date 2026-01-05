@@ -12,7 +12,13 @@ import {
 } from "../setup/testDataFactory";
 import { createAccount } from "../../src/services/accountService";
 import { createCategory } from "../../src/services/categoryService";
-import { createTransfer, deleteTransfer, listTransactions } from "../../src/services/transactionService";
+import {
+  createTransfer,
+  deleteTransfer,
+  listTransactions,
+  createTransaction,
+  deleteTransaction,
+} from "../../src/services/transactionService";
 
 describe("transactionService (transfer)", () => {
   it("cria e remove uma transferência (remove as duas pernas)", async () => {
@@ -178,6 +184,48 @@ describe("transactionService (transfer)", () => {
       // Ordem por data crescente (datas diferentes)
       const transferTxs = txs.filter((t) => t.transferId === transfer.to.transferId);
       expect(transferTxs[0]?.date <= transferTxs[1]?.date).toBe(true);
+    } finally {
+      await anonTestClient.auth.signOut();
+      await cleanupTestArtifacts({
+        organizationId: organization.id,
+        userId: user.id,
+      });
+    }
+  });
+
+  it("cria, atualiza e deleta uma transação avulsa", async () => {
+    const user = await createTestUser();
+    const organization = await createOrganizationForUser(user.id);
+    const category = await createCategory(serviceRoleClient, {
+      organizationId: organization.id,
+      name: `cat-${randomUUID()}`,
+    });
+    const account = await createAccount(serviceRoleClient, {
+      organizationId: organization.id,
+      name: `acc-${randomUUID()}`,
+      currency: "USD",
+      type: "bank",
+    });
+
+    const tx = await createTransaction(serviceRoleClient, {
+      organizationId: organization.id,
+      accountId: account.id,
+      categoryId: category.id,
+      type: "expense",
+      amount: 10,
+      currency: "USD",
+      date: "2025-04-01",
+      note: "one-off",
+      transferId: null,
+      exchangeRate: 1,
+    });
+
+    await deleteTransaction(serviceRoleClient, organization.id, tx.id);
+
+    try {
+      await signInTestUser(user.email, user.password);
+      const txs = await listTransactions(anonTestClient, organization.id);
+      expect(txs.find((t) => t.id === tx.id)).toBeUndefined();
     } finally {
       await anonTestClient.auth.signOut();
       await cleanupTestArtifacts({

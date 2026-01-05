@@ -47,6 +47,22 @@ export const listTransactions = async (
   return data.map(fromDbTransaction);
 };
 
+export const deleteTransaction = async (
+  client: SupabaseClient,
+  organizationId: string,
+  transactionId: string
+): Promise<void> => {
+  const { error } = await client
+    .from("transactions")
+    .delete()
+    .eq("organization_id", organizationId)
+    .eq("id", transactionId);
+
+  if (error) {
+    throw new Error(`Failed to delete transaction ${transactionId}: ${error.message}`);
+  }
+};
+
 export const deleteTransfer = async (
   client: SupabaseClient,
   organizationId: string,

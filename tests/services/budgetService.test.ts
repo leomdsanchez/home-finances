@@ -10,11 +10,16 @@ import {
   createTestUser,
   signInTestUser,
 } from "../setup/testDataFactory";
-import { createBudget, listBudgets } from "../../src/services/budgetService";
+import {
+  createBudget,
+  listBudgets,
+  updateBudget,
+  deleteBudget,
+} from "../../src/services/budgetService";
 import { createCategory } from "../../src/services/categoryService";
 
 describe("budgetService", () => {
-  it("creates and lists budgets for an organization", async () => {
+  it("creates, updates and deletes budgets for an organization", async () => {
     const user = await createTestUser();
     const organization = await createOrganizationForUser(user.id);
 
@@ -38,11 +43,20 @@ describe("budgetService", () => {
       currency: "USD",
     });
 
+    const updatedJan = await updateBudget(serviceRoleClient, {
+      organizationId: organization.id,
+      budgetId: budgetJan.id,
+      amount: 1100,
+    });
+
+    await deleteBudget(serviceRoleClient, organization.id, budgetFeb.id);
+
     try {
       await signInTestUser(user.email, user.password);
 
       const budgets = await listBudgets(anonTestClient, organization.id);
-      expect(budgets.map((b) => b.id)).toEqual([budgetJan.id, budgetFeb.id]);
+      expect(budgets.map((b) => b.id)).toEqual([updatedJan.id]);
+      expect(budgets[0]?.amount).toBe(1100);
       expect(budgets.every((b) => b.organizationId === organization.id)).toBe(
         true
       );

@@ -47,6 +47,27 @@ export const listTransactions = async (
   return data.map(fromDbTransaction);
 };
 
+export const deleteTransfer = async (
+  client: SupabaseClient,
+  organizationId: string,
+  transferId: string
+): Promise<void> => {
+  const { data, error } = await client
+    .from("transactions")
+    .delete()
+    .eq("organization_id", organizationId)
+    .eq("transfer_id", transferId)
+    .select("id");
+
+  if (error) {
+    throw new Error(`Failed to delete transfer ${transferId}: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(`Transfer ${transferId} not found for organization ${organizationId}`);
+  }
+};
+
 export const createTransfer = async (
   client: SupabaseClient,
   params: CreateTransferParams

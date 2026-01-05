@@ -24,10 +24,37 @@ const HomePage = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (session && !onboardingStep) {
-      setOnboardingStep("name");
-    }
-  }, [session, onboardingStep]);
+    const bootstrap = async () => {
+      if (!session) {
+        setOnboardingStep(null);
+        return;
+      }
+
+      // Descobre se já existe organização vinculada (RLS garante apenas do usuário)
+      const { data: orgs, error: orgError } = await supabase
+        .from("organizations")
+        .select("id")
+        .limit(1);
+
+      if (orgError) {
+        // Em caso de erro, força onboarding para evitar loop de redirect
+        setOnboardingStep("name");
+        return;
+      }
+
+      const nameExists = Boolean(session.user.user_metadata?.name);
+      const orgExists = Boolean(orgs && orgs.length > 0);
+
+      if (orgExists) {
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+
+      setOnboardingStep(nameExists ? "orgChoice" : "name");
+    };
+
+    void bootstrap();
+  }, [session, navigate]);
 
   const handleModeSelect = (selected: "signin" | "signup") => {
     setMode(selected);
@@ -76,7 +103,7 @@ const HomePage = () => {
       }
     }
     setStatus("");
-    setOnboardingStep("name");
+    setOnboardingStep(session?.user.user_metadata?.name ? "orgChoice" : "name");
   };
 
   const handleSaveName = async (e: React.FormEvent) => {
@@ -128,7 +155,7 @@ const HomePage = () => {
     }
 
     setStatus("");
-    navigate("/protected", { replace: true });
+    navigate("/dashboard", { replace: true });
   };
 
   const handleJoinOrg = async (e: React.FormEvent) => {
@@ -153,7 +180,7 @@ const HomePage = () => {
     }
 
     setStatus("");
-    navigate("/protected", { replace: true });
+    navigate("/dashboard", { replace: true });
   };
 
   const renderAuth = () => {

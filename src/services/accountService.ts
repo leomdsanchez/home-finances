@@ -32,7 +32,8 @@ export const listAccounts = async (
   const { data, error } = await client
     .from("accounts")
     .select("id, organization_id, name, currency, type, created_at")
-    .eq("organization_id", organizationId);
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: true });
 
   if (error || !data) {
     throw new Error(`Failed to list accounts: ${error?.message ?? "unknown"}`);

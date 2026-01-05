@@ -30,7 +30,8 @@ export const listCategories = async (
   const { data, error } = await client
     .from("categories")
     .select("id, organization_id, name")
-    .eq("organization_id", organizationId);
+    .eq("organization_id", organizationId)
+    .order("name", { ascending: true });
 
   if (error || !data) {
     throw new Error(`Failed to list categories: ${error?.message ?? "unknown"}`);

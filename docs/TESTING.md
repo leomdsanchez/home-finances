@@ -13,4 +13,5 @@
 - `tests/setup/testDataFactory.ts` expõe helpers para criar usuário de teste (`auth.admin.createUser`), criar organização com moeda base USD e vincular membership.
 - O teste de smoke (`tests/bootstrap/bootstrap.test.ts`) faz o ciclo completo: cria usuário, cria organização, cria membership e consulta como o próprio usuário para validar que o vínculo existe.
 - Os testes de serviço (`tests/services/organizationService.test.ts`) cobrem três fluxos separados: criar usuário sem org, criar org para um user e entrar em org existente.
+- Testes de serviços adicionais cobrem contas (`tests/services/accountService.test.ts`), categorias (`tests/services/categoryService.test.ts`) e budgets (`tests/services/budgetService.test.ts`) criando e listando registros para a organização do usuário autenticado.
 - `cleanupTestArtifacts` remove membership, organização e usuário criados, mantendo o banco limpo entre execuções.

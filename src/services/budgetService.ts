@@ -30,7 +30,8 @@ export const listBudgets = async (
   const { data, error } = await client
     .from("budgets")
     .select("id, organization_id, month, category_id, amount, currency")
-    .eq("organization_id", organizationId);
+    .eq("organization_id", organizationId)
+    .order("month", { ascending: true });
 
   if (error || !data) {
     throw new Error(`Failed to list budgets: ${error?.message ?? "unknown"}`);

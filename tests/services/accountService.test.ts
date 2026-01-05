@@ -23,7 +23,6 @@ describe("accountService", () => {
       name: `acc-${randomUUID()}`,
       currency: "USD",
       type: "bank",
-      createdAt: new Date().toISOString(),
     });
 
     try {

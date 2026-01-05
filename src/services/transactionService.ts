@@ -63,6 +63,43 @@ export const deleteTransaction = async (
   }
 };
 
+export const updateTransaction = async (
+  client: SupabaseClient,
+  params: {
+    organizationId: string;
+    transactionId: string;
+    amount?: number;
+    note?: string | null;
+    date?: string;
+    categoryId?: string;
+  }
+): Promise<Transaction> => {
+  const { organizationId, transactionId, ...fields } = params;
+  const updates: Partial<ReturnType<typeof toDbTransaction>> = {};
+  if (fields.amount !== undefined) updates.amount = fields.amount;
+  if (fields.note !== undefined) updates.note = fields.note;
+  if (fields.date) updates.date = fields.date;
+  if (fields.categoryId) updates.category_id = fields.categoryId;
+
+  const { data, error } = await client
+    .from("transactions")
+    .update(updates)
+    .eq("organization_id", organizationId)
+    .eq("id", transactionId)
+    .select(
+      "id, organization_id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at"
+    )
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to update transaction ${transactionId}: ${error?.message ?? "unknown"}`
+    );
+  }
+
+  return fromDbTransaction(data);
+};
+
 export const deleteTransfer = async (
   client: SupabaseClient,
   organizationId: string,

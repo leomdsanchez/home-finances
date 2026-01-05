@@ -18,6 +18,7 @@ import {
   listTransactions,
   createTransaction,
   deleteTransaction,
+  updateTransaction,
 } from "../../src/services/transactionService";
 
 describe("transactionService (transfer)", () => {
@@ -220,11 +221,20 @@ describe("transactionService (transfer)", () => {
       exchangeRate: 1,
     });
 
+    const updated = await updateTransaction(serviceRoleClient, {
+      organizationId: organization.id,
+      transactionId: tx.id,
+      amount: 15,
+      note: "updated-note",
+    });
+
     await deleteTransaction(serviceRoleClient, organization.id, tx.id);
 
     try {
       await signInTestUser(user.email, user.password);
       const txs = await listTransactions(anonTestClient, organization.id);
+      expect(updated.amount).toBe(15);
+      expect(updated.note).toBe("updated-note");
       expect(txs.find((t) => t.id === tx.id)).toBeUndefined();
     } finally {
       await anonTestClient.auth.signOut();

@@ -19,7 +19,8 @@
 
 @layer components {
   .page-shell {
-    @apply min-h-screen flex flex-col items-start justify-start bg-gradient-to-b from-white via-slate-50 to-white px-6 py-4;
+    min-height: 100dvh;
+    @apply flex flex-col items-start justify-start bg-gradient-to-b from-white via-slate-50 to-white px-6 py-4;
   }
   .card {
     @apply rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/70;

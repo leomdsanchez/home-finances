@@ -1,11 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { randomUUID } from "crypto";
 import type { Organization, OrganizationMember } from "../types/domain";
 
-type CreateUserAndOrganizationParams = {
+type CreateUserParams = {
   email: string;
   password: string;
-  orgName?: string;
+};
+
+type CreateOrganizationParams = {
+  name: string;
   baseCurrency?: string;
 };
 
@@ -36,73 +38,48 @@ const mapMembership = (row: {
   joinedAt: row.joined_at,
 });
 
-export const createUserAndOrganization = async (
+export const createUser = async (
   client: SupabaseClient,
-  params: CreateUserAndOrganizationParams
+  params: CreateUserParams
 ) => {
-  const email = params.email;
-  const password = params.password;
+  const { email, password } = params;
 
-  const { data: userData, error: userError } = await client.auth.admin.createUser(
-    {
-      email,
-      password,
-      email_confirm: true,
-    }
-  );
+  const { data, error } = await client.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
 
-  if (userError || !userData?.user) {
-    throw new Error(
-      `Failed to create user ${email}: ${userError?.message ?? "unknown"}`
-    );
-  }
-
-  const orgName = params.orgName ?? `org-${randomUUID()}`;
-  const baseCurrency = params.baseCurrency ?? "USD";
-
-  const { data: orgRow, error: orgError } = await client
-    .from("organizations")
-    .insert({ name: orgName, base_currency: baseCurrency })
-    .select("id, name, base_currency, created_at")
-    .single();
-
-  if (orgError || !orgRow) {
-    await client.auth.admin.deleteUser(userData.user.id);
-    throw new Error(
-      `Failed to create organization for user ${email}: ${
-        orgError?.message ?? "unknown"
-      }`
-    );
-  }
-
-  const { data: membershipRow, error: membershipError } = await client
-    .from("organization_members")
-    .insert({
-      organization_id: orgRow.id,
-      user_id: userData.user.id,
-    })
-    .select("organization_id, user_id, joined_at")
-    .single();
-
-  if (membershipError || !membershipRow) {
-    await client.from("organizations").delete().eq("id", orgRow.id);
-    await client.auth.admin.deleteUser(userData.user.id);
-    throw new Error(
-      `Failed to link user to organization: ${
-        membershipError?.message ?? "unknown"
-      }`
-    );
+  if (error || !data?.user) {
+    throw new Error(`Failed to create user ${email}: ${error?.message ?? "unknown"}`);
   }
 
   return {
-    user: {
-      id: userData.user.id,
-      email,
-      password,
-    },
-    organization: mapOrganization(orgRow),
-    membership: mapMembership(membershipRow),
+    id: data.user.id,
+    email,
+    password,
   };
+};
+
+export const createOrganization = async (
+  client: SupabaseClient,
+  params: CreateOrganizationParams
+) => {
+  const { name, baseCurrency = "USD" } = params;
+
+  const { data, error } = await client
+    .from("organizations")
+    .insert({ name, base_currency: baseCurrency })
+    .select("id, name, base_currency, created_at")
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `Failed to create organization ${name}: ${error?.message ?? "unknown"}`
+    );
+  }
+
+  return mapOrganization(data);
 };
 
 export const addUserToOrganization = async (
@@ -111,6 +88,7 @@ export const addUserToOrganization = async (
 ) => {
   const { userId, organizationId } = params;
 
+  // Try insert; if PK already exists, fetch existing membership.
   const { data, error } = await client
     .from("organization_members")
     .insert({
@@ -120,7 +98,7 @@ export const addUserToOrganization = async (
     .select("organization_id, user_id, joined_at")
     .single();
 
-  if (error || !data) {
+  if (error && error.code !== "23505") {
     throw new Error(
       `Failed to add user ${userId} to organization ${organizationId}: ${
         error?.message ?? "unknown"
@@ -128,5 +106,24 @@ export const addUserToOrganization = async (
     );
   }
 
-  return mapMembership(data);
+  if (data) {
+    return mapMembership(data);
+  }
+
+  const { data: existing, error: fetchError } = await client
+    .from("organization_members")
+    .select("organization_id, user_id, joined_at")
+    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (fetchError || !existing) {
+    throw new Error(
+      `Failed to resolve membership for user ${userId} in organization ${organizationId}: ${
+        fetchError?.message ?? "unknown"
+      }`
+    );
+  }
+
+  return mapMembership(existing);
 };

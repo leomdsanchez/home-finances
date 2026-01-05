@@ -21,4 +21,4 @@
 - Não commitar essas chaves; elas vêm do dashboard do Supabase.
 
 ## Comandos essenciais
-- Rodar testes de integração: `npm test` (usa o projeto cloud e faz cleanup dos dados criados).
+- Rodar testes de integração: `npm test` (usa o projeto cloud, executa em série e faz cleanup dos dados criados).

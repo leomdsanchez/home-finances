@@ -14,3 +14,16 @@ export type AddUserToOrganizationParams = {
   userId: string;
   organizationId: string;
 };
+
+export type CreateTransferParams = {
+  organizationId: string;
+  fromAccountId: string;
+  toAccountId: string;
+  categoryId: string;
+  amount: number; // valor na moeda da conta de origem
+  exchangeRate: number; // multiplicador para chegar ao valor na conta destino
+  currencyFrom: string;
+  currencyTo: string;
+  date: string; // ISO date
+  note?: string | null;
+};

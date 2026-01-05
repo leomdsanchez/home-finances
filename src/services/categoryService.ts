@@ -6,6 +6,21 @@ export const createCategory = async (
   client: SupabaseClient,
   input: NewCategoryInput
 ): Promise<Category> => {
+  const { data: existing, error: existingError } = await client
+    .from("categories")
+    .select("id")
+    .eq("organization_id", input.organizationId)
+    .eq("name", input.name)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(`Failed to check existing category: ${existingError.message}`);
+  }
+
+  if (existing) {
+    throw new Error(`Category with name "${input.name}" already exists in this organization.`);
+  }
+
   const { data, error } = await client
     .from("categories")
     .insert(toDbCategory(input))

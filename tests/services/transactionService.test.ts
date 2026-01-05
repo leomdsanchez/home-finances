@@ -201,6 +201,10 @@ describe("transactionService (transfer)", () => {
       organizationId: organization.id,
       name: `cat-${randomUUID()}`,
     });
+    const category2 = await createCategory(serviceRoleClient, {
+      organizationId: organization.id,
+      name: `cat2-${randomUUID()}`,
+    });
     const account = await createAccount(serviceRoleClient, {
       organizationId: organization.id,
       name: `acc-${randomUUID()}`,
@@ -226,6 +230,8 @@ describe("transactionService (transfer)", () => {
       transactionId: tx.id,
       amount: 15,
       note: "updated-note",
+      date: "2025-04-02",
+      categoryId: category2.id,
     });
 
     await deleteTransaction(serviceRoleClient, organization.id, tx.id);
@@ -235,6 +241,8 @@ describe("transactionService (transfer)", () => {
       const txs = await listTransactions(anonTestClient, organization.id);
       expect(updated.amount).toBe(15);
       expect(updated.note).toBe("updated-note");
+      expect(updated.date).toBe("2025-04-02");
+      expect(updated.categoryId).toBe(category2.id);
       expect(txs.find((t) => t.id === tx.id)).toBeUndefined();
     } finally {
       await anonTestClient.auth.signOut();
@@ -243,5 +251,47 @@ describe("transactionService (transfer)", () => {
         userId: user.id,
       });
     }
+  });
+
+  it("falha ao atualizar transação com organizationId errado", async () => {
+    const user = await createTestUser();
+    const organization = await createOrganizationForUser(user.id);
+    const otherUser = await createTestUser();
+    const otherOrg = await createOrganizationForUser(otherUser.id);
+
+    const category = await createCategory(serviceRoleClient, {
+      organizationId: organization.id,
+      name: `cat-${randomUUID()}`,
+    });
+    const account = await createAccount(serviceRoleClient, {
+      organizationId: organization.id,
+      name: `acc-${randomUUID()}`,
+      currency: "USD",
+      type: "bank",
+    });
+
+    const tx = await createTransaction(serviceRoleClient, {
+      organizationId: organization.id,
+      accountId: account.id,
+      categoryId: category.id,
+      type: "expense",
+      amount: 5,
+      currency: "USD",
+      date: "2025-05-01",
+      note: null,
+      transferId: null,
+      exchangeRate: 1,
+    });
+
+    await expect(
+      updateTransaction(serviceRoleClient, {
+        organizationId: otherOrg.id, // wrong org
+        transactionId: tx.id,
+        amount: 6,
+      })
+    ).rejects.toThrow();
+
+    await cleanupTestArtifacts({ organizationId: organization.id, userId: user.id });
+    await cleanupTestArtifacts({ organizationId: otherOrg.id, userId: otherUser.id });
   });
 });

@@ -6,6 +6,19 @@ export const createBudget = async (
   client: SupabaseClient,
   input: NewBudgetInput
 ): Promise<Budget> => {
+  const { data: category, error: categoryError } = await client
+    .from("categories")
+    .select("id, organization_id")
+    .eq("id", input.categoryId ?? "")
+    .maybeSingle();
+
+  if (categoryError) {
+    throw new Error(`Failed to validate category: ${categoryError.message}`);
+  }
+  if (input.categoryId && category?.organization_id !== input.organizationId) {
+    throw new Error("Category does not belong to this organization.");
+  }
+
   const { data, error } = await client
     .from("budgets")
     .insert(toDbBudget(input))
@@ -49,8 +62,25 @@ export const updateBudget = async (
 ): Promise<Budget> => {
   const { organizationId, budgetId, ...fields } = params;
   const updates: Partial<DbInsertBudget> = {};
+
+  if (fields.categoryId) {
+    const { data: category, error: categoryError } = await client
+      .from("categories")
+      .select("id, organization_id")
+      .eq("id", fields.categoryId)
+      .maybeSingle();
+    if (categoryError) {
+      throw new Error(`Failed to validate category: ${categoryError.message}`);
+    }
+    if (category?.organization_id !== organizationId) {
+      throw new Error("Category does not belong to this organization.");
+    }
+    updates.category_id = fields.categoryId;
+  } else if (fields.categoryId === null) {
+    updates.category_id = null;
+  }
+
   if (fields.amount !== undefined) updates.amount = fields.amount;
-  if (fields.categoryId !== undefined) updates.category_id = fields.categoryId;
   if (fields.month) updates.month = fields.month;
   if (fields.currency) updates.currency = fields.currency;
 

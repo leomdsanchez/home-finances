@@ -6,6 +6,21 @@ export const createAccount = async (
   client: SupabaseClient,
   input: NewAccountInput
 ): Promise<Account> => {
+  const { data: existing, error: existingError } = await client
+    .from("accounts")
+    .select("id")
+    .eq("organization_id", input.organizationId)
+    .eq("name", input.name)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(`Failed to check existing account: ${existingError.message}`);
+  }
+
+  if (existing) {
+    throw new Error(`Account with name "${input.name}" already exists in this organization.`);
+  }
+
   const { data, error } = await client
     .from("accounts")
     .insert(toDbAccount(input))

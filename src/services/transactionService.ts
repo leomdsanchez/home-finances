@@ -128,6 +128,33 @@ export const createTransfer = async (
   const transferId = randomUUID();
   const { amount, exchangeRate, currencyFrom, currencyTo, date, note } = params;
 
+  const { data: accounts, error: accountsError } = await client
+    .from("accounts")
+    .select("id, organization_id, currency")
+    .in("id", [params.fromAccountId, params.toAccountId]);
+
+  if (accountsError) {
+    throw new Error(`Failed to validate accounts: ${accountsError.message}`);
+  }
+
+  const fromAccount = accounts?.find((a) => a.id === params.fromAccountId);
+  const toAccount = accounts?.find((a) => a.id === params.toAccountId);
+
+  if (!fromAccount || !toAccount) {
+    throw new Error("Accounts not found for transfer.");
+  }
+
+  if (
+    fromAccount.organization_id !== params.organizationId ||
+    toAccount.organization_id !== params.organizationId
+  ) {
+    throw new Error("Accounts must belong to the same organization as the transfer.");
+  }
+
+  if (fromAccount.currency !== currencyFrom || toAccount.currency !== currencyTo) {
+    throw new Error("Currency parameters do not match account currencies.");
+  }
+
   const fromTransaction: NewTransactionInput = {
     organizationId: params.organizationId,
     accountId: params.fromAccountId,

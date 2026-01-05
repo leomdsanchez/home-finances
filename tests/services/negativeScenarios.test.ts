@@ -14,7 +14,6 @@ import { createCategory } from "../../src/services/categoryService";
 import { createAccount } from "../../src/services/accountService";
 import { createBudget } from "../../src/services/budgetService";
 import {
-  createTransaction,
   createTransfer,
   deleteTransaction,
 } from "../../src/services/transactionService";

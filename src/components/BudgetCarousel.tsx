@@ -80,11 +80,16 @@ export const BudgetCarousel = ({
     void fetchExpenses();
   }, [organizationId, budgets]);
 
-  const formatAmount = (value: number, currency: string) =>
-    value.toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }) + ` ${currency.toUpperCase()}`;
+  const formatAmount = (value: number, currency: string) => {
+    const code = currency.toUpperCase();
+    const noCents = code === "UYU";
+    return (
+      value.toLocaleString("pt-BR", {
+        minimumFractionDigits: noCents ? 0 : 2,
+        maximumFractionDigits: noCents ? 0 : 2,
+      }) + ` ${code}`
+    );
+  };
 
   const hasError = error || spentError;
 
@@ -105,8 +110,8 @@ export const BudgetCarousel = ({
             <p className="text-sm text-slate-500">Nenhum orçamento cadastrado ainda.</p>
           </div>
         ) : (
-          <div className="h-full overflow-x-auto scrollbar-hide">
-            <div className="grid h-full auto-cols-[240px] grid-flow-col items-start gap-3 pr-2">
+          <div className="h-full overflow-x-auto scrollbar-hide snap-x snap-mandatory px-2">
+            <div className="flex h-full items-start gap-3 pr-2">
               {budgets.map((budget) => {
                 const spent = spentByBudget[budget.id] ?? 0;
                 const left = budget.amount - spent;
@@ -117,13 +122,13 @@ export const BudgetCarousel = ({
                   : "Geral";
                 const isOver = spent > budget.amount;
                 const barColor = isOver
-                  ? "#ef4444"
-                  : "linear-gradient(90deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%)";
+                  ? "linear-gradient(90deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)"
+                  : "linear-gradient(90deg, #2e8cff 0%, #1d4ed8 50%, #0b3fbf 100%)";
 
                 return (
                   <article
                     key={budget.id}
-                    className="flex h-full flex-col justify-between rounded-3xl bg-slate-900 p-4 text-white shadow-lg shadow-slate-900/20"
+                    className="flex h-full min-w-[240px] flex-col justify-between rounded-3xl bg-slate-900 p-4 text-white shadow-lg shadow-slate-900/20 snap-start"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
@@ -149,16 +154,16 @@ export const BudgetCarousel = ({
                       ) : (
                         <Icon name="edit" className="h-4 w-4 text-orange-100/80" />
                       )}
-                    </div>
+                  </div>
 
-                    <div className="space-y-2 pt-3">
+                  <div className="space-y-2 pt-3">
                       <div className="space-y-1">
-                        <p className="text-2xl font-semibold tracking-tight">
+                        <p className="text-3xl font-semibold tracking-tight">
                           {formatAmount(left, budget.currency)}
                         </p>
                         <p className="text-xs text-orange-50/80">Restante para gastar</p>
                       </div>
-                      <div className="h-2 rounded-full bg-white/15 overflow-hidden">
+                      <div className="h-[20px] rounded-full bg-white/15 overflow-hidden">
                         <div
                           className="h-full rounded-full transition-[width,background] duration-200"
                           style={{ width: `${pct}%`, background: barColor }}

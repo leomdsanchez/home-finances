@@ -22,7 +22,7 @@ const DashboardPage = () => {
         key={acc.id}
         type="button"
         onClick={() => setSelectedAccountId(acc.id)}
-        className={`flex h-full min-w-[240px] flex-col justify-between rounded-3xl bg-slate-900 p-4 text-left text-white shadow-lg shadow-slate-900/20 snap-start transition hover:translate-y-[-2px] ${
+        className={`flex min-h-[110px] min-w-[220px] flex-col justify-between rounded-3xl bg-slate-900 p-3 text-left text-white shadow-lg shadow-slate-900/20 snap-start transition hover:translate-y-[-2px] ${
           active ? "ring-2 ring-blue-400/60" : ""
         }`}
       >
@@ -45,19 +45,19 @@ const DashboardPage = () => {
 
         <div className="relative flex-1 min-h-0">
           <div className="flex h-full flex-col gap-4 px-0">
-            <div className="h-60 shrink-0 overflow-hidden">
+            <div className="h-40 shrink-0 overflow-hidden">
               <div className="flex items-center justify-between px-1 mb-2">
                 <p className="text-sm font-semibold text-slate-800">Contas</p>
                 {accLoading ? (
                   <span className="text-xs text-slate-500">Carregando...</span>
                 ) : null}
-              </div>
-              <div className="h-full overflow-x-auto scrollbar-hide snap-x snap-mandatory">
-                <div className="flex h-full items-stretch gap-3 pr-2">
-                  {accounts.map(renderAccountCard)}
-                </div>
+            </div>
+            <div className="h-full overflow-x-auto scrollbar-hide snap-x snap-mandatory">
+              <div className="flex h-full items-start gap-3 pr-2">
+                {accounts.map(renderAccountCard)}
               </div>
             </div>
+          </div>
 
             <div className="relative flex-1 min-h-0 flex flex-col scrollbar-hide">
               <RecentTransactionsCard

@@ -128,7 +128,15 @@ const QuickAddPage = () => {
             </p>
             <p className="text-xl font-semibold text-slate-900">{displayName}</p>
           </div>
-          <div className="relative">
+          <div className="relative flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard")}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              aria-label="Dashboard"
+            >
+              <Icon name="dashboard" className="h-5 w-5" />
+            </button>
             <button
               type="button"
               onClick={() => setMenuOpen((prev) => !prev)}
@@ -140,7 +148,7 @@ const QuickAddPage = () => {
             {menuOpen ? (
               <div
                 ref={menuRef}
-                className="absolute right-0 mt-2 w-56 space-y-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-200/80"
+                className="absolute right-0 top-full mt-2 w-56 space-y-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg shadow-slate-200/80 z-20"
               >
                 {menuEntries.map((item, idx) =>
                   item.key === "divider" ? (

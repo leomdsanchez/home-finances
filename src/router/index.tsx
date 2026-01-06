@@ -8,6 +8,7 @@ import OrganizationPage from "../pages/OrganizationPage.tsx";
 import CategoriesPage from "../pages/CategoriesPage.tsx";
 import AccountsPage from "../pages/AccountsPage.tsx";
 import BudgetsPage from "../pages/BudgetsPage.tsx";
+import DashboardPage from "../pages/DashboardPage.tsx";
 import NotFoundPage from "../pages/404Page.tsx";
 import AuthProtectedRoute from "./AuthProtectedRoute.tsx";
 import Providers from "../Providers.tsx";
@@ -59,6 +60,10 @@ const router = createBrowserRouter([
           {
             path: "/orcamentos",
             element: <BudgetsPage />,
+          },
+          {
+            path: "/dashboard",
+            element: <DashboardPage />,
           },
         ],
       },

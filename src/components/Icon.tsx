@@ -23,6 +23,7 @@ import {
   ArrowLeftRight,
   ArrowDownRight,
   ArrowUpRight,
+  LayoutGrid,
   X,
   type LucideProps,
 } from "lucide-react";
@@ -52,7 +53,8 @@ type IconName =
   | "edit"
   | "arrow-down-right"
   | "arrow-up-right"
-  | "close";
+  | "close"
+  | "dashboard";
 
 const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   mail: Mail,
@@ -79,6 +81,7 @@ const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   edit: Pencil,
   "arrow-down-right": ArrowDownRight,
   "arrow-up-right": ArrowUpRight,
+  dashboard: LayoutGrid,
   close: X,
 };
 

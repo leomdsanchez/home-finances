@@ -33,6 +33,7 @@ type Props = {
   accounts: Account[];
   limit?: number;
   refreshKey?: number;
+  fill?: boolean;
 };
 
 export const RecentTransactionsCard = ({
@@ -40,6 +41,7 @@ export const RecentTransactionsCard = ({
   accounts,
   limit = 30,
   refreshKey = 0,
+  fill = false,
 }: Props) => {
   const [recents, setRecents] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
@@ -162,12 +164,16 @@ export const RecentTransactionsCard = ({
     })} ${currency.toUpperCase()}`;
 
   return (
-    <section className="space-y-3">
+    <section className={`space-y-3 ${fill ? "flex min-h-0 flex-col" : ""}`}>
       <div>
         <p className="text-sm font-semibold text-slate-800">Últimos lançamentos</p>
         <p className="muted">Entradas, saídas e transferências.</p>
       </div>
-      <div className="max-h-72 space-y-2 overflow-y-auto">
+      <div
+        className={`space-y-2 overflow-y-auto ${
+          fill ? "flex-1 min-h-0" : "max-h-72"
+        }`}
+      >
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500">
             <Icon name="loader" className="h-4 w-4 animate-spin" />

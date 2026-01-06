@@ -33,7 +33,7 @@ export type Transaction = {
   id: string;
   organizationId: string;
   accountId: string;
-  categoryId: string;
+  categoryId: string | null;
   type: TransactionType;
   amount: number;
   currency: string;

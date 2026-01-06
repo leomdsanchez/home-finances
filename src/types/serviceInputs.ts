@@ -30,7 +30,7 @@ export type CreateTransferParams = {
   organizationId: string;
   fromAccountId: string;
   toAccountId: string;
-  categoryId: string;
+  categoryId: string | null;
   amount: number; // valor na moeda da conta de origem
   exchangeRate: number; // multiplicador para chegar ao valor na conta destino
   currencyFrom: string;

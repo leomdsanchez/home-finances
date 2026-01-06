@@ -4,7 +4,7 @@ export type DbTransactionRow = {
   id: string;
   organization_id: string;
   account_id: string;
-  category_id: string;
+  category_id: string | null;
   type: TransactionType;
   amount: number;
   currency: string;
@@ -20,7 +20,7 @@ export type NewTransactionInput = Omit<Transaction, "id" | "createdAt">;
 export type DbInsertTransaction = {
   organization_id: string;
   account_id: string;
-  category_id: string;
+  category_id: string | null;
   type: TransactionType;
   amount: number;
   currency: string;
@@ -50,7 +50,7 @@ export const toDbTransaction = (
 ): DbInsertTransaction => ({
   organization_id: input.organizationId,
   account_id: input.accountId,
-  category_id: input.categoryId,
+  category_id: input.categoryId ?? null,
   type: input.type,
   amount: input.amount,
   currency: input.currency,

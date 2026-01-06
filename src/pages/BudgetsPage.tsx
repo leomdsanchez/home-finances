@@ -16,12 +16,14 @@ const BudgetsPage = () => {
     error: budgetError,
     addBudget,
     removeBudget,
+    editBudget,
   } = useBudgets(organization?.id);
 
   const [showModal, setShowModal] = useState(false);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [amount, setAmount] = useState<string>("");
   const [currency, setCurrency] = useState("USD");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const categoryNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -32,14 +34,23 @@ const BudgetsPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount) return;
-    await addBudget({
-      categoryId,
-      amount: Number(amount),
-      currency,
-    });
+    if (editingId) {
+      await editBudget(editingId, {
+        categoryId,
+        amount: Number(amount),
+        currency,
+      });
+    } else {
+      await addBudget({
+        categoryId,
+        amount: Number(amount),
+        currency,
+      });
+    }
     setAmount("");
     setCategoryId(null);
-    setCurrency("USD");
+    setCurrency(organization?.baseCurrency ?? "USD");
+    setEditingId(null);
     setShowModal(false);
   };
 
@@ -91,13 +102,28 @@ const BudgetsPage = () => {
                       {budget.amount} {budget.currency}
                     </p>
                   </div>
-                  <button
-                    onClick={() => removeBudget(budget.id)}
-                    className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                    aria-label="Remover orçamento"
-                  >
-                    <Icon name="trash" className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingId(budget.id);
+                        setCategoryId(budget.categoryId ?? null);
+                        setAmount(String(budget.amount));
+                        setCurrency(budget.currency);
+                        setShowModal(true);
+                      }}
+                      className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      aria-label="Editar orçamento"
+                    >
+                      <Icon name="edit" className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => removeBudget(budget.id)}
+                      className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      aria-label="Remover orçamento"
+                    >
+                      <Icon name="trash" className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -106,7 +132,13 @@ const BudgetsPage = () => {
 
         <div className="fixed bottom-6 right-6">
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setEditingId(null);
+              setAmount("");
+              setCategoryId(null);
+              setCurrency(organization?.baseCurrency ?? "USD");
+              setShowModal(true);
+            }}
             className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             aria-label="Novo orçamento"
           >
@@ -118,9 +150,17 @@ const BudgetsPage = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
             <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">Novo orçamento</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {editingId ? "Editar orçamento" : "Novo orçamento"}
+                </h2>
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingId(null);
+                    setAmount("");
+                    setCategoryId(null);
+                    setCurrency(organization?.baseCurrency ?? "USD");
+                  }}
                   className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                   aria-label="Fechar modal"
                 >
@@ -171,8 +211,12 @@ const BudgetsPage = () => {
                     </div>
                   </div>
                   {budgetError && <p className="text-sm text-red-500">{budgetError}</p>}
-                  <Button type="submit" trailingIcon="plus" disabled={budgetLoading}>
-                    {budgetLoading ? "Salvando..." : "Adicionar"}
+                  <Button
+                    type="submit"
+                    trailingIcon={editingId ? undefined : "plus"}
+                    disabled={budgetLoading}
+                  >
+                    {budgetLoading ? "Salvando..." : editingId ? "Salvar" : "Adicionar"}
                   </Button>
                 </form>
               ) : (

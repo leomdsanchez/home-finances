@@ -24,7 +24,6 @@ const OrganizationPage = () => {
   const [showRateModal, setShowRateModal] = useState(false);
   const [targetCurrency, setTargetCurrency] = useState("USD");
   const [rateValue, setRateValue] = useState("1");
-  const [spreadValue, setSpreadValue] = useState("0");
   const baseCurrency = organization?.baseCurrency ?? "USD";
 
   // Sincroniza estado quando a org for carregada
@@ -170,9 +169,7 @@ const OrganizationPage = () => {
                     <p className="font-semibold text-slate-800">
                       {r.fromCurrency} → {r.toCurrency}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      Taxa: {r.rate} • Spread: {r.spreadPct}%
-                    </p>
+                    <p className="text-xs text-slate-500">Taxa: {r.rate}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -180,7 +177,6 @@ const OrganizationPage = () => {
                       onClick={() => {
                         setTargetCurrency(r.toCurrency);
                         setRateValue(String(r.rate));
-                        setSpreadValue(String(r.spreadPct ?? 0));
                         setShowRateModal(true);
                       }}
                       className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
@@ -222,13 +218,11 @@ const OrganizationPage = () => {
                 onSubmit={async (e) => {
                   e.preventDefault();
                   const rateNum = Number(rateValue);
-                  const spreadNum = Number(spreadValue) || 0;
                   if (!rateNum || rateNum <= 0) return;
                   await saveRate({
                     fromCurrency: organization.baseCurrency,
                     toCurrency: targetCurrency,
                     rate: rateNum,
-                    spreadPct: spreadNum,
                   });
                   setShowRateModal(false);
                 }}
@@ -260,26 +254,13 @@ const OrganizationPage = () => {
                     onChange={(e) => setRateValue(e.target.value)}
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-600">Spread (%)</label>
-                  <Input
-                    name="spread"
-                    type="number"
-                    step="0.01"
-                    value={spreadValue}
-                    onChange={(e) => setSpreadValue(e.target.value)}
-                  />
-                </div>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                   {(() => {
                     const rateNum = Number(rateValue) || 0;
-                    const spreadNum = Number(spreadValue) || 0;
-                    if (!rateNum) return <p>Preencha taxa e spread para ver a prévia.</p>;
-                    // Interpretação: taxa informada = base por destino (ex.: 7.5 UYU por 1 BRL)
-                    // Spread aplicado nas duas pontas: comprar destino custa mais, vender destino devolve menos.
-                    const factor = 1 + spreadNum / 100;
-                    const effectiveBuy = rateNum * factor; // base -> destino (mais caro)
-                    const effectiveSell = rateNum / factor; // destino -> base (recebe menos)
+                    if (!rateNum) return <p>Preencha a taxa para ver a prévia.</p>;
+                    // Taxa informada = base por destino (ex.: 7.5 UYU por 1 BRL)
+                    const effectiveBuy = rateNum; // base -> destino
+                    const effectiveSell = rateNum; // destino -> base
                     const baseSample = 1000;
                     const toAmount = baseSample / effectiveBuy;
                     const backAmount = toAmount * effectiveSell;
@@ -300,9 +281,7 @@ const OrganizationPage = () => {
                           })}{" "}
                           {baseCurrency}
                         </p>
-                        <p className="text-xs text-slate-500">
-                          Taxas: {effectiveBuy.toFixed(4)} / {effectiveSell.toFixed(4)}
-                        </p>
+                        <p className="text-xs text-slate-500">Taxa: {effectiveBuy.toFixed(4)}</p>
                       </div>
                     );
                   })()}

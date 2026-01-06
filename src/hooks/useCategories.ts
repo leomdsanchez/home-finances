@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import supabase from "../lib/supabaseClient";
-import { listCategories, createCategory, deleteCategory } from "../services/categoryService";
+import {
+  listCategories,
+  createCategory,
+  deleteCategory,
+  updateCategory,
+} from "../services/categoryService";
 import type { Category } from "../types/domain";
 
 type State = {
@@ -61,6 +66,21 @@ export const useCategories = (organizationId?: string) => {
     }
   };
 
+  const editCategory = async (categoryId: string, name: string) => {
+    if (!organizationId) return;
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      await updateCategory(supabase, { organizationId, categoryId, name });
+      await fetchCategories();
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: err instanceof Error ? err.message : "Falha ao atualizar categoria",
+      }));
+    }
+  };
+
   useEffect(() => {
     void fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -71,5 +91,6 @@ export const useCategories = (organizationId?: string) => {
     refresh: fetchCategories,
     addCategory,
     removeCategory,
+    editCategory,
   };
 };

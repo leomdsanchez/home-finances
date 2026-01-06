@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import supabase from "../lib/supabaseClient";
-import { listBudgets, createBudget, deleteBudget } from "../services/budgetService";
+import { listBudgets, createBudget, deleteBudget, updateBudget } from "../services/budgetService";
 import type { Budget } from "../types/domain";
 
 type State = {
@@ -67,6 +67,24 @@ export const useBudgets = (organizationId?: string) => {
     }
   };
 
+  const editBudget = async (
+    budgetId: string,
+    params: { categoryId: string | null; amount: number; currency: string }
+  ) => {
+    if (!organizationId) return;
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      await updateBudget(supabase, { organizationId, budgetId, ...params });
+      await fetchBudgets();
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: err instanceof Error ? err.message : "Falha ao atualizar orçamento",
+      }));
+    }
+  };
+
   useEffect(() => {
     void fetchBudgets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,5 +95,6 @@ export const useBudgets = (organizationId?: string) => {
     refresh: fetchBudgets,
     addBudget,
     removeBudget,
+    editBudget,
   };
 };

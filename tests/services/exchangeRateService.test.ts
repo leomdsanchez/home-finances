@@ -19,7 +19,7 @@ import {
 const ORG_BASE = "USD";
 
 describe("exchangeRateService", () => {
-  it("creates, lists, updates and deletes exchange defaults with spread", async () => {
+  it("creates, lists, updates and deletes exchange defaults", async () => {
     const user = await createTestUser();
     const org = await createOrganizationForUser(user.id);
 
@@ -29,11 +29,9 @@ describe("exchangeRateService", () => {
       fromCurrency: ORG_BASE,
       toCurrency: "BRL",
       rate: 5.2,
-      spreadPct: 1.5,
     });
 
     expect(saved.rate).toBe(5.2);
-    expect(saved.spreadPct).toBe(1.5);
 
     // atualiza (garante upsert)
     const updated = await upsertExchangeDefault(serviceRoleClient, {
@@ -41,18 +39,15 @@ describe("exchangeRateService", () => {
       fromCurrency: ORG_BASE,
       toCurrency: "BRL",
       rate: 5.1,
-      spreadPct: 2,
     });
 
     expect(updated.rate).toBe(5.1);
-    expect(updated.spreadPct).toBe(2);
 
     // lista como membro
     await signInTestUser(user.email, user.password);
     const list = await listExchangeDefaults(anonTestClient, org.id);
     expect(list).toHaveLength(1);
     expect(list[0]?.toCurrency).toBe("BRL");
-    expect(list[0]?.spreadPct).toBe(2);
     await anonTestClient.auth.signOut();
 
     // remove
@@ -79,7 +74,6 @@ describe("exchangeRateService", () => {
       fromCurrency: ORG_BASE,
       toCurrency: "EUR",
       rate: 0.9,
-      spreadPct: 1,
     });
 
     await signInTestUser(outsider.email, outsider.password);

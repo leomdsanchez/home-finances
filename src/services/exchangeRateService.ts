@@ -6,7 +6,6 @@ type ExchangeRow = {
   from_currency: string;
   to_currency: string;
   rate: number;
-  spread_pct: number;
   updated_at: string;
 };
 
@@ -15,7 +14,6 @@ const mapRow = (row: ExchangeRow): ExchangeDefault => ({
   fromCurrency: row.from_currency,
   toCurrency: row.to_currency,
   rate: row.rate,
-  spreadPct: row.spread_pct,
   updatedAt: row.updated_at,
 });
 
@@ -25,7 +23,7 @@ export const listExchangeDefaults = async (
 ): Promise<ExchangeDefault[]> => {
   const { data, error } = await client
     .from("org_exchange_defaults")
-    .select("organization_id, from_currency, to_currency, rate, spread_pct, updated_at")
+    .select("organization_id, from_currency, to_currency, rate, updated_at")
     .eq("organization_id", organizationId)
     .order("from_currency", { ascending: true });
 
@@ -43,10 +41,9 @@ export const upsertExchangeDefault = async (
     fromCurrency: string;
     toCurrency: string;
     rate: number;
-    spreadPct?: number;
   }
 ): Promise<ExchangeDefault> => {
-  const { organizationId, fromCurrency, toCurrency, rate, spreadPct = 0 } = params;
+  const { organizationId, fromCurrency, toCurrency, rate } = params;
   const { data, error } = await client
     .from("org_exchange_defaults")
     .upsert(
@@ -55,11 +52,10 @@ export const upsertExchangeDefault = async (
         from_currency: fromCurrency,
         to_currency: toCurrency,
         rate,
-        spread_pct: spreadPct,
       },
       { onConflict: "organization_id,from_currency,to_currency" }
     )
-    .select("organization_id, from_currency, to_currency, rate, spread_pct, updated_at")
+    .select("organization_id, from_currency, to_currency, rate, updated_at")
     .single();
 
   if (error || !data) {

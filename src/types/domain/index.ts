@@ -62,6 +62,5 @@ export type ExchangeDefault = {
   fromCurrency: string;
   toCurrency: string;
   rate: number;
-  spreadPct: number;
   updatedAt: string;
 };

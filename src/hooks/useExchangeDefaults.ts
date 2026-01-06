@@ -35,12 +35,7 @@ export const useExchangeDefaults = (organizationId?: string) => {
     }
   };
 
-  const saveRate = async (params: {
-    fromCurrency: string;
-    toCurrency: string;
-    rate: number;
-    spreadPct?: number;
-  }) => {
+  const saveRate = async (params: { fromCurrency: string; toCurrency: string; rate: number }) => {
     if (!organizationId) return;
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {

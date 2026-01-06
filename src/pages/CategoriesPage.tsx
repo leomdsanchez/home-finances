@@ -8,17 +8,22 @@ import { PageHeader } from "../components/PageHeader";
 
 const CategoriesPage = () => {
   const { organization, loading: orgLoading, error: orgError } = useCurrentOrganization();
-  const { categories, loading, error, addCategory, removeCategory } = useCategories(
-    organization?.id
-  );
+  const { categories, loading, error, addCategory, removeCategory, editCategory } =
+    useCategories(organization?.id);
   const [newCategory, setNewCategory] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCategory) return;
-    await addCategory(newCategory);
+    if (editingId) {
+      await editCategory(editingId, newCategory);
+    } else {
+      await addCategory(newCategory);
+    }
     setNewCategory("");
+    setEditingId(null);
     setShowModal(false);
   };
 
@@ -49,13 +54,26 @@ const CategoriesPage = () => {
                   className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
                 >
                   <span className="text-sm text-slate-800">{cat.name}</span>
-                  <button
-                    onClick={() => removeCategory(cat.id)}
-                    className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                    aria-label={`Remover ${cat.name}`}
-                  >
-                    <Icon name="trash" className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingId(cat.id);
+                        setNewCategory(cat.name);
+                        setShowModal(true);
+                      }}
+                      className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      aria-label={`Editar ${cat.name}`}
+                    >
+                      <Icon name="edit" className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => removeCategory(cat.id)}
+                      className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      aria-label={`Remover ${cat.name}`}
+                    >
+                      <Icon name="trash" className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -77,9 +95,15 @@ const CategoriesPage = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
             <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">Nova categoria</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {editingId ? "Editar categoria" : "Nova categoria"}
+                </h2>
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingId(null);
+                    setNewCategory("");
+                  }}
                   className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                   aria-label="Fechar modal"
                 >
@@ -102,8 +126,8 @@ const CategoriesPage = () => {
                     onChange={(e) => setNewCategory(e.target.value)}
                   />
                   {error && <p className="text-sm text-red-500">{error}</p>}
-                  <Button type="submit" trailingIcon="plus" disabled={loading}>
-                    {loading ? "Salvando..." : "Adicionar"}
+                  <Button type="submit" trailingIcon={editingId ? undefined : "plus"} disabled={loading}>
+                    {loading ? "Salvando..." : editingId ? "Salvar" : "Adicionar"}
                   </Button>
                 </form>
               ) : (

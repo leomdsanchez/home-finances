@@ -79,4 +79,48 @@ describe("budgetService", () => {
       userId: outsider.id,
     });
   });
+
+  it("rejects duplicate general budget and duplicate category budget", async () => {
+    const user = await createTestUser();
+    const organization = await createOrganizationForUser(user.id);
+
+    const category = await createCategory(serviceRoleClient, {
+      organizationId: organization.id,
+      name: `cat-${randomUUID()}`,
+    });
+
+    await createBudget(serviceRoleClient, {
+      organizationId: organization.id,
+      categoryId: null,
+      amount: 100,
+      currency: "USD",
+    });
+
+    await expect(
+      createBudget(serviceRoleClient, {
+        organizationId: organization.id,
+        categoryId: null,
+        amount: 200,
+        currency: "USD",
+      })
+    ).rejects.toThrow();
+
+    await createBudget(serviceRoleClient, {
+      organizationId: organization.id,
+      categoryId: category.id,
+      amount: 300,
+      currency: "USD",
+    });
+
+    await expect(
+      createBudget(serviceRoleClient, {
+        organizationId: organization.id,
+        categoryId: category.id,
+        amount: 400,
+        currency: "USD",
+      })
+    ).rejects.toThrow();
+
+    await cleanupTestArtifacts({ organizationId: organization.id, userId: user.id });
+  });
 });

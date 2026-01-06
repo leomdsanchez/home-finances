@@ -35,7 +35,7 @@ describe("exchangeRateService", () => {
     expect(saved.rate).toBe(5.2);
     expect(saved.spreadPct).toBe(1.5);
 
-    // atualiza
+    // atualiza (garante upsert)
     const updated = await upsertExchangeDefault(serviceRoleClient, {
       organizationId: org.id,
       fromCurrency: ORG_BASE,

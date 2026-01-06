@@ -151,9 +151,10 @@ const QuickAddPage = () => {
   const formatBalance = (value?: number, currency?: string) => {
     if (typeof value !== "number" || Number.isNaN(value)) return "—";
     const label = currency ? currency.toUpperCase() : "";
+    const noCents = label === "UYU";
     return `${value.toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: noCents ? 0 : 2,
+      maximumFractionDigits: noCents ? 0 : 2,
     })} ${label}`.trim();
   };
 

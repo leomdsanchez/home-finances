@@ -169,44 +169,89 @@ export const RecentTransactionsCard = ({
         <p className="text-sm font-semibold text-slate-800">Últimos lançamentos</p>
         <p className="muted">Entradas, saídas e transferências.</p>
       </div>
-      <div
-        className={`space-y-2 ${
-          fill ? "flex-1 min-h-0 overflow-y-auto" : "max-h-72 overflow-y-auto"
-        }`}
-      >
-        {loading ? (
-          <div className="flex items-center gap-2 text-slate-500">
-            <Icon name="loader" className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Carregando...</span>
-          </div>
-        ) : error ? (
-          <p className="text-sm text-red-500">{error}</p>
-        ) : recents.length === 0 ? (
-          <div className="text-center text-slate-500">
-            <div className="flex flex-col items-center gap-2 text-slate-500">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm">
-                <Icon name="mic" className="h-5 w-5" />
-              </span>
-              <p className="text-sm">Nenhum lançamento ainda. Adicione o primeiro.</p>
+      <div className="relative flex-1 min-h-0">
+        <div
+          className={`space-y-2 ${
+            fill ? "flex-1 min-h-0 overflow-y-auto pb-16" : "max-h-72 overflow-y-auto"
+          }`}
+        >
+          {loading ? (
+            <div className="flex items-center gap-2 text-slate-500">
+              <Icon name="loader" className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Carregando...</span>
             </div>
-          </div>
-        ) : (
-          recents.map((item) => {
-            if (item.kind === "transfer") {
+          ) : error ? (
+            <p className="text-sm text-red-500">{error}</p>
+          ) : recents.length === 0 ? (
+            <div className="text-center text-slate-500">
+              <div className="flex flex-col items-center gap-2 text-slate-500">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm">
+                  <Icon name="mic" className="h-5 w-5" />
+                </span>
+                <p className="text-sm">Nenhum lançamento ainda. Adicione o primeiro.</p>
+              </div>
+            </div>
+          ) : (
+            recents.map((item) => {
+              if (item.kind === "transfer") {
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-purple-50 text-purple-600">
+                        <Icon name="transfer" className="h-4 w-4" />
+                      </span>
+                      <div className="space-y-1 text-sm">
+                        <p className="font-semibold text-slate-900">Transferência</p>
+                        <p className="text-xs text-slate-500">
+                          {accountNameById.get(item.fromAccountId) ?? "Conta origem"} →{" "}
+                          {accountNameById.get(item.toAccountId) ?? "Conta destino"}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {new Date(item.date).toLocaleDateString("pt-BR")}
+                        </p>
+                        {item.note ? (
+                          <p className="text-xs text-slate-500 line-clamp-1">{item.note}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="text-right text-sm">
+                      <p className="font-semibold text-slate-900">
+                        {formatAmount(item.amountTo, item.currencyTo)}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Saída: {formatAmount(item.amountFrom, item.currencyFrom)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+
+              const isExpense = item.kind === "expense";
               return (
                 <div
                   key={item.id}
                   className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
                 >
                   <div className="flex items-start gap-3">
-                    <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-purple-50 text-purple-600">
-                      <Icon name="transfer" className="h-4 w-4" />
+                    <span
+                      className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${
+                        isExpense ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
+                      }`}
+                    >
+                      <Icon
+                        name={isExpense ? "arrow-down-right" : "arrow-up-right"}
+                        className="h-4 w-4"
+                      />
                     </span>
                     <div className="space-y-1 text-sm">
-                      <p className="font-semibold text-slate-900">Transferência</p>
+                      <p className="font-semibold text-slate-900">
+                        {isExpense ? "Saída" : "Entrada"}
+                      </p>
                       <p className="text-xs text-slate-500">
-                        {accountNameById.get(item.fromAccountId) ?? "Conta origem"} →{" "}
-                        {accountNameById.get(item.toAccountId) ?? "Conta destino"}
+                        {accountNameById.get(item.accountId) ?? "Conta"}
                       </p>
                       <p className="text-xs text-slate-500">
                         {new Date(item.date).toLocaleDateString("pt-BR")}
@@ -216,62 +261,22 @@ export const RecentTransactionsCard = ({
                       ) : null}
                     </div>
                   </div>
-                  <div className="text-right text-sm">
-                    <p className="font-semibold text-slate-900">
-                      {formatAmount(item.amountTo, item.currencyTo)}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Saída: {formatAmount(item.amountFrom, item.currencyFrom)}
-                    </p>
+                  <div
+                    className={`text-right text-sm font-semibold ${
+                      isExpense ? "text-red-500" : "text-emerald-600"
+                    }`}
+                  >
+                    {isExpense ? "-" : "+"}
+                    {formatAmount(item.amount, item.currency)}
                   </div>
                 </div>
               );
-            }
-
-            const isExpense = item.kind === "expense";
-            return (
-              <div
-                key={item.id}
-                className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${
-                      isExpense ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
-                    }`}
-                  >
-                    <Icon
-                      name={isExpense ? "arrow-down-right" : "arrow-up-right"}
-                      className="h-4 w-4"
-                    />
-                  </span>
-                  <div className="space-y-1 text-sm">
-                    <p className="font-semibold text-slate-900">
-                      {isExpense ? "Saída" : "Entrada"}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {accountNameById.get(item.accountId) ?? "Conta"}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {new Date(item.date).toLocaleDateString("pt-BR")}
-                    </p>
-                    {item.note ? (
-                      <p className="text-xs text-slate-500 line-clamp-1">{item.note}</p>
-                    ) : null}
-                  </div>
-                </div>
-                <div
-                  className={`text-right text-sm font-semibold ${
-                    isExpense ? "text-red-500" : "text-emerald-600"
-                  }`}
-                >
-                  {isExpense ? "-" : "+"}
-                  {formatAmount(item.amount, item.currency)}
-                </div>
-              </div>
-            );
-          })
-        )}
+            })
+          )}
+        </div>
+        {fill ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white via-white/85 to-transparent" />
+        ) : null}
       </div>
     </section>
   );

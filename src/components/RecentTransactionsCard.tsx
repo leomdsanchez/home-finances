@@ -173,7 +173,7 @@ export const RecentTransactionsCard = ({
         <div
           className={`relative space-y-2 ${
             fill
-              ? "flex-1 min-h-0 overflow-y-auto pb-8 bg-white px-2"
+              ? "flex-1 min-h-0 overflow-y-auto pb-6 bg-white px-2"
               : "max-h-72 overflow-y-auto"
           }`}
         >

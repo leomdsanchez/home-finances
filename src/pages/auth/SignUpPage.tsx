@@ -5,12 +5,13 @@ import supabase from "../../lib/supabaseClient";
 
 const SignUpPage = () => {
   const { session } = useSession();
-  if (session) return <Navigate to="/" />;
   const [status, setStatus] = useState("");
   const [formValues, setFormValues] = useState({
     email: "",
     password: "",
   });
+
+  if (session) return <Navigate to="/" />;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormValues({ ...formValues, [e.target.name]: e.target.value });

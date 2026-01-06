@@ -158,7 +158,7 @@ describe("transactionService (transfer)", () => {
       toAccountId: accountTo.id,
       categoryId: category.id,
       amount: 100, // USD
-      exchangeRate: 5.2, // USD -> BRL
+      exchangeRate: 5.2, // 5.2 USD = 1 BRL (base -> destino)
       currencyFrom: "USD",
       currencyTo: "BRL",
       date: "2025-02-01",
@@ -175,7 +175,7 @@ describe("transactionService (transfer)", () => {
       expect(toTx?.type).toBe("income");
       expect(fromTx?.transferId).toBe(toTx?.transferId);
       expect(fromTx?.amount).toBe(100);
-      expect(toTx?.amount).toBeCloseTo(520, 2);
+      expect(toTx?.amount).toBeCloseTo(19.23, 2);
       expect(fromTx?.exchangeRate).toBe(1);
       expect(toTx?.exchangeRate).toBeCloseTo(5.2, 2);
       expect(fromTx?.currency).toBe("USD");

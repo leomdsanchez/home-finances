@@ -9,6 +9,7 @@ const SessionContext = createContext<{
   session: null,
 });
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSession = () => {
   const context = useContext(SessionContext);
   if (!context) {
@@ -45,7 +46,7 @@ export const SessionProvider = ({ children }: Props) => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, []);
 
   return (
     <SessionContext.Provider value={{ session }}>

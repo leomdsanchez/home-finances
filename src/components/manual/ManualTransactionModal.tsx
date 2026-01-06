@@ -1,10 +1,26 @@
-import { useEffect, useState } from "react";
-import { Input } from "./Input";
-import { Button } from "./Button";
-import { Icon } from "./Icon";
-import type { Account, Category, Organization } from "../types/domain";
-import supabase from "../lib/supabaseClient";
-import { createTransaction, createTransfer } from "../services/transactionService";
+import {
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+  type InputHTMLAttributes,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { Input } from "../Input";
+import { Button } from "../Button";
+import { Icon } from "../Icon";
+import type { Account, Category, Organization } from "../../types/domain";
+import supabase from "../../lib/supabaseClient";
+import { createTransaction, createTransfer } from "../../services/transactionService";
+import { useExchangeDefaults } from "../../hooks/useExchangeDefaults";
+
+type Mode = "expense" | "income" | "transfer";
+type StepId = "type" | "account" | "amount" | "details";
+
+const STEP_ORDER: StepId[] = ["type", "account", "amount", "details"];
+const ZERO_DECIMAL_CURRENCIES = new Set(["ARS", "CLP", "COP", "MXN", "PYG", "DOP", "UYU", "PEN"]);
+const TWO_DECIMAL_CURRENCIES = new Set(["BRL", "USD", "EUR"]);
 
 type Props = {
   open: boolean;
@@ -15,6 +31,132 @@ type Props = {
   loading?: boolean;
 };
 
+type FormState = {
+  mode: Mode;
+  accountId: string;
+  toAccountId: string;
+  categoryId: string | null;
+  amount: string;
+  exchangeRate: string;
+  note: string;
+  date: string;
+  step: StepId;
+};
+
+type FormAction =
+  | { type: "reset"; payload: { accounts: Account[] } }
+  | { type: "setField"; field: keyof FormState; value: string | null }
+  | { type: "setMode"; mode: Mode }
+  | { type: "setStep"; step: StepId };
+
+const createInitialState = (accounts: Account[]): FormState => ({
+  mode: "expense",
+  accountId: accounts[0]?.id ?? "",
+  toAccountId: accounts[1]?.id ?? accounts[0]?.id ?? "",
+  categoryId: null,
+  amount: "",
+  exchangeRate: "1",
+  note: "",
+  date: new Date().toISOString().slice(0, 10),
+  step: "type",
+});
+
+const formReducer = (state: FormState, action: FormAction): FormState => {
+  switch (action.type) {
+    case "reset":
+      return createInitialState(action.payload.accounts);
+    case "setMode":
+      return { ...state, mode: action.mode };
+    case "setField":
+      return { ...state, [action.field]: action.value as FormState[typeof action.field] };
+    case "setStep":
+      return { ...state, step: action.step };
+    default:
+      return state;
+  }
+};
+
+const getCurrencyDecimals = (code?: string) => {
+  if (!code) return 2;
+  if (ZERO_DECIMAL_CURRENCIES.has(code.toUpperCase())) return 0;
+  if (TWO_DECIMAL_CURRENCIES.has(code.toUpperCase())) return 2;
+  return 2;
+};
+
+const formatAmount = (value: string, decimals: number) => {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  if (decimals === 0) return String(parseInt(digits, 10));
+  const padded = digits.padStart(decimals + 1, "0");
+  const integerPart = String(parseInt(padded.slice(0, -decimals), 10));
+  const fraction = padded.slice(-decimals);
+  return `${integerPart},${fraction}`;
+};
+
+const parseAmountToNumber = (value: string) => {
+  const normalized = value.replace(/\./g, "").replace(",", ".");
+  const parsed = parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+type LabeledSelectProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+};
+
+const LabeledSelect = ({ label, value, onChange, children }: LabeledSelectProps) => (
+  <div className="space-y-1">
+    <label className="text-sm text-slate-600">{label}</label>
+    <select className="input bg-white" value={value} onChange={(e) => onChange(e.target.value)}>
+      {children}
+    </select>
+  </div>
+);
+
+type LabeledInputProps = InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  helperText?: string;
+};
+
+const LabeledInput = ({ label, helperText, ...props }: LabeledInputProps) => (
+  <div className="space-y-1">
+    <label className="text-sm text-slate-600">{label}</label>
+    <Input {...props} />
+    {helperText ? <p className="text-xs text-slate-500">{helperText}</p> : null}
+  </div>
+);
+
+type ModeToggleProps = {
+  mode: Mode;
+  onChange: (mode: Mode) => void;
+};
+
+const ModeToggle = ({ mode, onChange }: ModeToggleProps) => (
+  <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1 text-sm font-medium">
+    {[
+      { key: "expense", label: "Saída", icon: "arrow-down-right" as const },
+      { key: "income", label: "Entrada", icon: "arrow-up-right" as const },
+      { key: "transfer", label: "Transferência", icon: "transfer" as const },
+    ].map(({ key, label, icon }) => (
+      <button
+        key={key}
+        type="button"
+        onClick={() => onChange(key as Mode)}
+        className={`flex-1 rounded-full px-3 py-2 transition ${
+          mode === key ? "bg-white shadow-sm text-slate-900" : "text-slate-500"
+        }`}
+      >
+        <span className="flex items-center justify-center gap-2">
+          <Icon name={icon} className="h-4 w-4" />
+          {label}
+        </span>
+      </button>
+    ))}
+  </div>
+);
+
 export const ManualTransactionModal = ({
   open,
   onClose,
@@ -23,60 +165,146 @@ export const ManualTransactionModal = ({
   categories,
   loading,
 }: Props) => {
-  const [mode, setMode] = useState<"expense" | "income" | "transfer">("expense");
-  const [accountId, setAccountId] = useState("");
-  const [toAccountId, setToAccountId] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [amount, setAmount] = useState("");
-  const [exchangeRate, setExchangeRate] = useState("1");
-  const [note, setNote] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [form, dispatch] = useReducer(formReducer, accounts, (accs) =>
+    createInitialState(accs),
+  );
+  const { rates } = useExchangeDefaults(organization?.id);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const updateField = (field: keyof FormState, value: string | null) => {
+    setError(null);
+    dispatch({ type: "setField", field, value });
+  };
+
   useEffect(() => {
     if (open) {
-      setAccountId(accounts[0]?.id ?? "");
-      setToAccountId(accounts[1]?.id ?? accounts[0]?.id ?? "");
-      setCategoryId(null);
-      setAmount("");
-      setExchangeRate("1");
-      setNote("");
-      setDate(new Date().toISOString().slice(0, 10));
-      setMode("expense");
+      dispatch({ type: "reset", payload: { accounts } });
+      dispatch({ type: "setStep", step: "type" });
       setError(null);
     }
   }, [open, accounts, categories]);
 
+  const account = useMemo(
+    () => accounts.find((a) => a.id === form.accountId) ?? accounts[0],
+    [accounts, form.accountId],
+  );
+  const toAccount = useMemo(
+    () => accounts.find((a) => a.id === form.toAccountId) ?? accounts[1],
+    [accounts, form.toAccountId],
+  );
+
+  const decimals = getCurrencyDecimals(account?.currency);
+  const toDecimals = getCurrencyDecimals(toAccount?.currency);
+  const amountValue = parseAmountToNumber(form.amount);
+  const exchangeRateNumber = Number(form.exchangeRate) || 0;
+  const convertedAmount =
+    form.mode === "transfer" && amountValue > 0 && exchangeRateNumber > 0
+      ? amountValue / exchangeRateNumber
+      : null;
+
+  const defaultExchangeRate = useMemo(() => {
+    if (!account || !toAccount) return null;
+    const match = rates.find(
+      (rate) =>
+        rate.fromCurrency.toUpperCase() === account.currency.toUpperCase() &&
+        rate.toCurrency.toUpperCase() === toAccount.currency.toUpperCase(),
+    );
+    return match?.rate ?? null;
+  }, [account, toAccount, rates]);
+
+  useEffect(() => {
+    if (form.mode !== "transfer") return;
+    if (!account || !toAccount) return;
+    if (!defaultExchangeRate) return;
+    dispatch({
+      type: "setField",
+      field: "exchangeRate",
+      value: defaultExchangeRate.toString(),
+    });
+  }, [account, toAccount, defaultExchangeRate, form.mode]);
+
+  const setStep = (step: StepId) => dispatch({ type: "setStep", step });
+
+  const goToNext = () => {
+    const currentIndex = STEP_ORDER.indexOf(form.step);
+    if (currentIndex < STEP_ORDER.length - 1) {
+      setStep(STEP_ORDER[currentIndex + 1]);
+      setError(null);
+    }
+  };
+
+  const goToPrev = () => {
+    const currentIndex = STEP_ORDER.indexOf(form.step);
+    if (currentIndex > 0) {
+      setStep(STEP_ORDER[currentIndex - 1]);
+      setError(null);
+    }
+  };
+
+  const validateStep = (step: StepId): string | null => {
+    if (step === "account") {
+      if (!form.accountId) return "Selecione uma conta.";
+      if (form.mode === "transfer") {
+        if (!form.toAccountId) return "Selecione a conta de destino.";
+        if (form.toAccountId === form.accountId) return "Contas devem ser diferentes.";
+      }
+    }
+
+    if (step === "amount") {
+      if (!form.amount) return "Informe o valor.";
+      if (amountValue <= 0) return "Valor deve ser maior que zero.";
+      if (form.mode === "transfer" && (!form.exchangeRate || Number(form.exchangeRate) <= 0))
+        return "Preencha a taxa.";
+    }
+
+    if (step === "details") {
+      if (!form.note.trim()) return "Descreva o lançamento.";
+      if (form.mode !== "transfer" && !form.categoryId) return "Selecione uma categoria.";
+    }
+
+    return null;
+  };
+
+  const validateAll = () => {
+    for (const step of STEP_ORDER) {
+      const msg = validateStep(step);
+      if (msg) return msg;
+    }
+    return null;
+  };
+
   const canSubmit =
     !!organization &&
     !loading &&
-    !!accountId &&
-    (mode === "transfer" ? !!toAccountId && !!exchangeRate && Number(exchangeRate) > 0 : true) &&
-    !!amount &&
-    Number(amount) > 0 &&
-    note.trim().length > 0;
+    !validateAll();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    const validationMessage = validateAll();
+    if (validationMessage) {
+      setError(validationMessage);
+      return;
+    }
     if (!organization) return;
-    const account = accounts.find((a) => a.id === accountId);
+    const account = accounts.find((a) => a.id === form.accountId);
     if (!account) {
       setError("Selecione uma conta.");
       return;
     }
-    const category = categoryId ? categories.find((c) => c.id === categoryId) : null;
-    if (!note.trim()) {
+    const category = form.categoryId ? categories.find((c) => c.id === form.categoryId) : null;
+    if (!form.note.trim()) {
       setError("Descreva o lançamento.");
       return;
     }
-    if (!category && mode !== "transfer") return setError("Selecione uma categoria.");
+    if (!category && form.mode !== "transfer") return setError("Selecione uma categoria.");
 
-    if (mode === "transfer") {
-      const toAcc = accounts.find((a) => a.id === toAccountId);
+    if (form.mode === "transfer") {
+      const toAcc = accounts.find((a) => a.id === form.toAccountId);
       if (!toAcc) return setError("Selecione a conta de destino.");
       if (toAcc.id === account.id) return setError("Escolha contas diferentes.");
-      if (!exchangeRate || Number(exchangeRate) <= 0) return setError("Preencha a taxa.");
+      if (!form.exchangeRate || Number(form.exchangeRate) <= 0)
+        return setError("Preencha a taxa.");
       setSaving(true);
       setError(null);
       try {
@@ -85,12 +313,12 @@ export const ManualTransactionModal = ({
           fromAccountId: account.id,
           toAccountId: toAcc.id,
           categoryId: category?.id ?? null,
-          amount: Number(amount),
-          exchangeRate: Number(exchangeRate),
+          amount: amountValue,
+          exchangeRate: Number(form.exchangeRate),
           currencyFrom: account.currency,
           currencyTo: toAcc.currency,
-          date,
-          note: note || null,
+          date: form.date,
+          note: form.note || null,
         });
         onClose();
       } catch (err) {
@@ -108,11 +336,11 @@ export const ManualTransactionModal = ({
         organizationId: organization.id,
         accountId: account.id,
         categoryId: category?.id ?? null,
-        type: mode,
-        amount: Number(amount),
+        type: form.mode,
+        amount: amountValue,
         currency: account.currency,
-        date,
-        note: note || null,
+        date: form.date,
+        note: form.note || null,
         transferId: null,
         exchangeRate: 1,
       });
@@ -130,14 +358,19 @@ export const ManualTransactionModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
       <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Lançamento manual</h2>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Lançamento manual</h2>
+            <p className="text-xs text-slate-500">
+              Etapa {STEP_ORDER.indexOf(form.step) + 1} de {STEP_ORDER.length}
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             aria-label="Fechar modal"
           >
-            <Icon name="arrow-left" className="h-4 w-4" />
+            <Icon name="close" className="h-4 w-4" />
           </button>
         </div>
         {loading ? (
@@ -149,140 +382,164 @@ export const ManualTransactionModal = ({
           <p className="text-sm text-red-500">Organização não encontrada.</p>
         ) : accounts.length === 0 ? (
           <p className="text-sm text-red-500">Cadastre uma conta antes de lançar.</p>
-        ) : categories.length === 0 ? (
-          <p className="text-sm text-red-500">Cadastre uma categoria antes de lançar.</p>
         ) : (
-          <form className="space-y-3" onSubmit={handleSubmit}>
-            <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1 text-sm font-medium">
-              <button
-                type="button"
-                onClick={() => setMode("expense")}
-                className={`flex-1 rounded-full px-3 py-2 transition ${
-                  mode === "expense" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"
-                }`}
-              >
-                Saída
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("income")}
-                className={`flex-1 rounded-full px-3 py-2 transition ${
-                  mode === "income" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"
-                }`}
-              >
-                Entrada
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("transfer")}
-                className={`flex-1 rounded-full px-3 py-2 transition ${
-                  mode === "transfer" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"
-                }`}
-              >
-                Transferência
-              </button>
-            </div>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            {form.step === "type" && (
+              <div className="space-y-4">
+                <ModeToggle
+                  mode={form.mode}
+                  onChange={(mode) => {
+                    dispatch({ type: "setMode", mode });
+                    setError(null);
+                  }}
+                />
+                <LabeledInput
+                  label="Data"
+                  name="date"
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => updateField("date", e.target.value)}
+                />
+              </div>
+            )}
 
-            <div className="space-y-1">
-              <label className="text-sm text-slate-600">Conta</label>
-              <select
-                className="input bg-white"
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-              >
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.name} ({acc.currency})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {mode === "transfer" && (
-              <div className="space-y-1">
-                <label className="text-sm text-slate-600">Conta de destino</label>
-                <select
-                  className="input bg-white"
-                  value={toAccountId}
-                  onChange={(e) => setToAccountId(e.target.value)}
+            {form.step === "account" && (
+              <div className="space-y-3">
+                <LabeledSelect
+                  label={form.mode === "transfer" ? "Conta de origem" : "Conta"}
+                  value={form.accountId}
+                  onChange={(value) => updateField("accountId", value)}
                 >
                   {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name} ({acc.currency})
                     </option>
                   ))}
-                </select>
+                </LabeledSelect>
+
+                {form.mode === "transfer" && (
+                  <LabeledSelect
+                    label="Conta de destino"
+                    value={form.toAccountId}
+                    onChange={(value) => updateField("toAccountId", value)}
+                  >
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({acc.currency})
+                      </option>
+                    ))}
+                  </LabeledSelect>
+                )}
               </div>
             )}
 
-            <div className="space-y-1">
-              <label className="text-sm text-slate-600">Categoria</label>
-              <select
-                className="input bg-white"
-                value={categoryId ?? ""}
-                onChange={(e) => setCategoryId(e.target.value || null)}
-              >
-                <option value="">Sem categoria</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <label className="text-sm text-slate-600">Valor</label>
-                <Input
+            {form.step === "amount" && (
+              <div className="space-y-3">
+                <LabeledInput
+                  label={`Valor (${account?.currency ?? "moeda"})`}
                   name="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
                   placeholder="0,00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  inputMode="decimal"
+                  autoFocus
+                  value={form.amount}
+                  onChange={(e) => {
+                    const formatted = formatAmount(e.target.value, decimals);
+                    updateField("amount", formatted);
+                  }}
+                  helperText={
+                    decimals === 0
+                      ? "Sem centavos para pesos; digite só números."
+                      : "Digite o valor seguido dos centavos, sem precisar usar vírgula."
+                  }
                 />
+                {form.mode === "transfer" && (
+                  <>
+                    <LabeledInput
+                      label={`Taxa ${account?.currency ?? ""} → ${toAccount?.currency ?? ""}`}
+                      name="exchangeRate"
+                      type="number"
+                      step="0.0001"
+                      value={form.exchangeRate}
+                      onChange={(e) => updateField("exchangeRate", e.target.value)}
+                      helperText={
+                        defaultExchangeRate
+                          ? `Padrão: ${defaultExchangeRate} ${account?.currency} = 1 ${toAccount?.currency}`
+                          : "Quantos da moeda de origem valem 1 da moeda destino."
+                      }
+                    />
+                    {convertedAmount !== null ? (
+                      <p className="text-xs text-slate-500">
+                        ≈ {convertedAmount.toFixed(toDecimals)} {toAccount?.currency}
+                      </p>
+                    ) : null}
+                  </>
+                )}
               </div>
-              {mode === "transfer" && (
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-600">Taxa</label>
-                  <Input
-                    name="exchangeRate"
-                    type="number"
-                    step="0.0001"
-                    value={exchangeRate}
-                    onChange={(e) => setExchangeRate(e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
+            )}
 
-            <div className="space-y-1">
-              <label className="text-sm text-slate-600">Data</label>
-              <Input
-                name="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm text-slate-600">Nota</label>
-              <Input
-                name="note"
-                placeholder="Descrição rápida"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </div>
+            {form.step === "details" && (
+              <div className="space-y-3">
+                <LabeledInput
+                  label="Nota"
+                  name="note"
+                  placeholder="Descrição rápida"
+                  value={form.note}
+                  onChange={(e) => updateField("note", e.target.value)}
+                />
+                {form.mode !== "transfer" ? (
+                  categories.length === 0 ? (
+                    <p className="text-xs text-red-500">Cadastre uma categoria para concluir.</p>
+                  ) : (
+                    <LabeledSelect
+                      label="Categoria"
+                      value={form.categoryId ?? ""}
+                      onChange={(value) => updateField("categoryId", value || null)}
+                    >
+                      <option value="">Selecione</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </LabeledSelect>
+                  )
+                ) : (
+                  <p className="text-xs text-slate-500">Transferências não usam categoria.</p>
+                )}
+              </div>
+            )}
 
             {error && <p className="text-sm text-red-500">{error}</p>}
 
-            <Button type="submit" disabled={!canSubmit || saving}>
-              {saving ? "Salvando..." : "Salvar"}
-            </Button>
+            <div className="flex items-center justify-between gap-3">
+              <Button
+                variant="ghost"
+                className="w-auto flex-1"
+                onClick={goToPrev}
+                disabled={form.step === "type" || saving}
+              >
+                <Icon name="arrow-left" className="h-4 w-4" />
+              </Button>
+
+              {form.step === "details" ? (
+                <Button type="submit" disabled={!canSubmit || saving} className="w-auto flex-1">
+                  {saving ? "Salvando..." : "Salvar"}
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  className="w-auto flex-1"
+                  type="button"
+                  onClick={() => {
+                    const msg = validateStep(form.step);
+                    if (msg) return setError(msg);
+                    goToNext();
+                  }}
+                >
+                  <Icon name="arrow-right" className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </form>
         )}
       </div>

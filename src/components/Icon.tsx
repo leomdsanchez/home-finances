@@ -21,6 +21,9 @@ import {
   Copy,
   Pencil,
   ArrowLeftRight,
+  ArrowDownRight,
+  ArrowUpRight,
+  X,
   type LucideProps,
 } from "lucide-react";
 
@@ -46,7 +49,10 @@ type IconName =
   | "arrow-left"
   | "copy"
   | "transfer"
-  | "edit";
+  | "edit"
+  | "arrow-down-right"
+  | "arrow-up-right"
+  | "close";
 
 const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   mail: Mail,
@@ -71,6 +77,9 @@ const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   copy: Copy,
   transfer: ArrowLeftRight,
   edit: Pencil,
+  "arrow-down-right": ArrowDownRight,
+  "arrow-up-right": ArrowUpRight,
+  close: X,
 };
 
 interface IconProps extends LucideProps {

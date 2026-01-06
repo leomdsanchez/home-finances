@@ -120,12 +120,54 @@ export const deleteTransfer = async (
   }
 };
 
+const resolveTransferCategoryId = async (
+  client: SupabaseClient,
+  organizationId: string,
+  categoryId?: string | null,
+): Promise<string> => {
+  if (categoryId) return categoryId;
+
+  const { data: existing, error: fetchError } = await client
+    .from("categories")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .order("name", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw new Error(`Failed to fetch categories for transfer: ${fetchError.message}`);
+  }
+
+  if (existing?.id) return existing.id;
+
+  const { data: created, error: createError } = await client
+    .from("categories")
+    .insert({ organization_id: organizationId, name: "Transferência" })
+    .select("id")
+    .single();
+
+  if (createError || !created) {
+    throw new Error(
+      `Failed to create fallback category for transfer: ${createError?.message ?? "unknown"}`,
+    );
+  }
+
+  return created.id;
+};
+
 export const createTransfer = async (
   client: SupabaseClient,
   params: CreateTransferParams
 ): Promise<{ from: Transaction; to: Transaction }> => {
   const transferId = crypto.randomUUID();
   const { amount, exchangeRate, currencyFrom, currencyTo, date, note } = params;
+
+  const transferCategoryId = await resolveTransferCategoryId(
+    client,
+    params.organizationId,
+    params.categoryId ?? null
+  );
 
   const { data: accounts, error: accountsError } = await client
     .from("accounts")
@@ -157,7 +199,7 @@ export const createTransfer = async (
   const fromTransaction: NewTransactionInput = {
     organizationId: params.organizationId,
     accountId: params.fromAccountId,
-    categoryId: params.categoryId,
+    categoryId: transferCategoryId,
     type: "expense",
     amount,
     currency: currencyFrom,
@@ -167,12 +209,15 @@ export const createTransfer = async (
     exchangeRate: 1,
   };
 
+  const convertedAmount =
+    exchangeRate > 0 ? Math.round((amount / exchangeRate) * 100) / 100 : 0;
+
   const toTransaction: NewTransactionInput = {
     organizationId: params.organizationId,
     accountId: params.toAccountId,
-    categoryId: params.categoryId,
+    categoryId: transferCategoryId,
     type: "income",
-    amount: Math.round(amount * exchangeRate * 100) / 100, // 2 casas para evitar valores estranhos
+    amount: convertedAmount, // 2 casas para evitar valores estranhos
     currency: currencyTo,
     date,
     note: note ?? null,

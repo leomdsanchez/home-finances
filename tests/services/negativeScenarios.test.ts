@@ -68,7 +68,6 @@ describe("negative scenarios", () => {
     await expect(
       createBudget(serviceRoleClient, {
         organizationId: orgA.id,
-        month: "2025-06",
         categoryId: catB.id,
         amount: 100,
         currency: "USD",

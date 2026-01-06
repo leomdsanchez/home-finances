@@ -6,11 +6,13 @@ export const createBudget = async (
   client: SupabaseClient,
   input: NewBudgetInput
 ): Promise<Budget> => {
-  const { data: category, error: categoryError } = await client
-    .from("categories")
-    .select("id, organization_id")
-    .eq("id", input.categoryId ?? "")
-    .maybeSingle();
+  const { data: category, error: categoryError } = input.categoryId
+    ? await client
+        .from("categories")
+        .select("id, organization_id")
+        .eq("id", input.categoryId)
+        .maybeSingle()
+    : { data: null, error: null };
 
   if (categoryError) {
     throw new Error(`Failed to validate category: ${categoryError.message}`);
@@ -22,7 +24,7 @@ export const createBudget = async (
   const { data, error } = await client
     .from("budgets")
     .insert(toDbBudget(input))
-    .select("id, organization_id, month, category_id, amount, currency")
+    .select("id, organization_id, category_id, amount, currency")
     .single();
 
   if (error || !data) {
@@ -38,9 +40,9 @@ export const listBudgets = async (
 ): Promise<Budget[]> => {
   const { data, error } = await client
     .from("budgets")
-    .select("id, organization_id, month, category_id, amount, currency")
+    .select("id, organization_id, category_id, amount, currency")
     .eq("organization_id", organizationId)
-    .order("month", { ascending: true });
+    .order("category_id", { ascending: true });
 
   if (error || !data) {
     throw new Error(`Failed to list budgets: ${error?.message ?? "unknown"}`);
@@ -56,7 +58,6 @@ export const updateBudget = async (
     budgetId: string;
     amount?: number;
     categoryId?: string | null;
-    month?: string;
     currency?: string;
   }
 ): Promise<Budget> => {
@@ -81,7 +82,6 @@ export const updateBudget = async (
   }
 
   if (fields.amount !== undefined) updates.amount = fields.amount;
-  if (fields.month) updates.month = fields.month;
   if (fields.currency) updates.currency = fields.currency;
 
   const { data, error } = await client
@@ -89,7 +89,7 @@ export const updateBudget = async (
     .update(updates)
     .eq("id", budgetId)
     .eq("organization_id", organizationId)
-    .select("id, organization_id, month, category_id, amount, currency")
+    .select("id, organization_id, category_id, amount, currency")
     .single();
 
   if (error || !data) {

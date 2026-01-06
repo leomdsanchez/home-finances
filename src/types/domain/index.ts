@@ -47,7 +47,6 @@ export type Transaction = {
 export type Budget = {
   id: string;
   organizationId: string;
-  month: string;
   categoryId: string | null;
   amount: number;
   currency: string;
@@ -56,4 +55,12 @@ export type Budget = {
 export type Currency = {
   code: string;
   symbol: string;
+};
+
+export type ExchangeDefault = {
+  organizationId: string;
+  fromCurrency: string;
+  toCurrency: string;
+  rate: number;
+  updatedAt: string;
 };

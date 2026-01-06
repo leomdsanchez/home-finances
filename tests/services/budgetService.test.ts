@@ -30,34 +30,33 @@ describe("budgetService", () => {
       name: `cat-${randomUUID()}`,
     });
 
-    const budgetJan = await createBudget(serviceRoleClient, {
+    const generalBudget = await createBudget(serviceRoleClient, {
       organizationId: organization.id,
-      month: "2025-01",
-      categoryId: category.id,
+      categoryId: null,
       amount: 1000,
       currency: "USD",
     });
-    const budgetFeb = await createBudget(serviceRoleClient, {
+    const catBudget = await createBudget(serviceRoleClient, {
       organizationId: organization.id,
-      month: "2025-02",
       categoryId: category.id,
       amount: 1200,
       currency: "USD",
     });
 
-    const updatedJan = await updateBudget(serviceRoleClient, {
+    const updatedCatBudget = await updateBudget(serviceRoleClient, {
       organizationId: organization.id,
-      budgetId: budgetJan.id,
+      budgetId: catBudget.id,
       amount: 1100,
     });
 
-    await deleteBudget(serviceRoleClient, organization.id, budgetFeb.id);
+    // Delete general budget, keep category budget
+    await deleteBudget(serviceRoleClient, organization.id, generalBudget.id);
 
     try {
       await signInTestUser(user.email, user.password);
 
       const budgets = await listBudgets(anonTestClient, organization.id);
-      expect(budgets.map((b) => b.id)).toEqual([updatedJan.id]);
+      expect(budgets.map((b) => b.id)).toEqual([updatedCatBudget.id]);
       expect(budgets[0]?.amount).toBe(1100);
       expect(budgets.every((b) => b.organizationId === organization.id)).toBe(
         true

@@ -18,15 +18,31 @@ type OrientationWithLock = ScreenOrientation & {
 export const OrientationLock = () => {
   useEffect(() => {
     let mounted = true;
+    let locking = false;
+    let loggedUnsupported = false;
 
     const tryLock = async () => {
+      if (locking) return;
       // API disponível apenas em contextos seguros e browsers compatíveis.
       const orientation = "orientation" in screen ? (screen.orientation as OrientationWithLock) : null;
       if (!orientation?.lock) return;
       try {
+        locking = true;
         await orientation.lock("portrait");
       } catch (err) {
-        console.warn("Falhou ao travar orientação:", err);
+        const name = err instanceof DOMException ? err.name : "";
+        if (name === "AbortError") {
+          // Chamada concorrente cancelada — silencie.
+        } else if (name === "NotSupportedError") {
+          if (!loggedUnsupported) {
+            console.info("Orientação retrato não suportada neste device/navegador.");
+            loggedUnsupported = true;
+          }
+        } else {
+          console.warn("Falhou ao travar orientação:", err);
+        }
+      } finally {
+        locking = false;
       }
     };
 

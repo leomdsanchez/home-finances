@@ -170,8 +170,8 @@ export const RecentTransactionsCard = ({
         <p className="muted">Entradas, saídas e transferências.</p>
       </div>
       <div
-        className={`space-y-2 overflow-y-auto ${
-          fill ? "flex-1 min-h-0" : "max-h-72"
+        className={`space-y-2 ${
+          fill ? "flex-1 min-h-0 overflow-y-auto" : "max-h-72 overflow-y-auto"
         }`}
       >
         {loading ? (

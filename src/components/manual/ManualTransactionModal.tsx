@@ -128,8 +128,8 @@ type ModeToggleProps = {
 const ModeToggle = ({ mode, onChange }: ModeToggleProps) => (
   <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1 text-sm font-medium">
     {[
-      { key: "expense", label: "Saída", icon: "arrow-down-right" as const, color: "text-red-600" },
-      { key: "income", label: "Entrada", icon: "arrow-up-right" as const, color: "text-green-600" },
+      { key: "expense", label: "Saída", icon: "arrow-up-right" as const, color: "text-red-600" },
+      { key: "income", label: "Entrada", icon: "arrow-down-right" as const, color: "text-green-600" },
       { key: "transfer", label: "Transf.", icon: "transfer" as const, color: "text-purple-600" },
     ].map(({ key, label, icon, color }) => {
       const active = mode === key;

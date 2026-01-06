@@ -19,6 +19,7 @@ import {
   Trash2,
   ArrowLeft,
   Copy,
+  Pencil,
   type LucideProps,
 } from "lucide-react";
 
@@ -42,7 +43,8 @@ type IconName =
   | "plus"
   | "trash"
   | "arrow-left"
-  | "copy";
+  | "copy"
+  | "edit";
 
 const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   mail: Mail,
@@ -65,6 +67,7 @@ const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   trash: Trash2,
   "arrow-left": ArrowLeft,
   copy: Copy,
+  edit: Pencil,
 };
 
 interface IconProps extends LucideProps {

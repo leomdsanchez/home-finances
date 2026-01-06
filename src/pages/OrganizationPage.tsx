@@ -25,6 +25,7 @@ const OrganizationPage = () => {
   const [targetCurrency, setTargetCurrency] = useState("USD");
   const [rateValue, setRateValue] = useState("1");
   const [spreadValue, setSpreadValue] = useState("0");
+  const baseCurrency = organization?.baseCurrency ?? "USD";
 
   // Sincroniza estado quando a org for carregada
   useEffect(() => {
@@ -169,16 +170,33 @@ const OrganizationPage = () => {
                     <p className="font-semibold text-slate-800">
                       {r.fromCurrency} → {r.toCurrency}
                     </p>
-                    <p className="text-xs text-slate-500">Taxa padrão: {r.rate}</p>
+                    <p className="text-xs text-slate-500">
+                      Taxa: {r.rate} • Spread: {r.spreadPct}%
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeRate(r.fromCurrency, r.toCurrency)}
-                    className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                    aria-label="Remover taxa"
-                  >
-                    <Icon name="trash" className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTargetCurrency(r.toCurrency);
+                        setRateValue(String(r.rate));
+                        setSpreadValue(String(r.spreadPct ?? 0));
+                        setShowRateModal(true);
+                      }}
+                      className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      aria-label="Editar taxa"
+                    >
+                      <Icon name="edit" className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeRate(r.fromCurrency, r.toCurrency)}
+                      className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      aria-label="Remover taxa"
+                    >
+                      <Icon name="trash" className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -252,9 +270,44 @@ const OrganizationPage = () => {
                     onChange={(e) => setSpreadValue(e.target.value)}
                   />
                 </div>
-                <Button type="submit" trailingIcon="plus">
-                  Salvar
-                </Button>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  {(() => {
+                    const rateNum = Number(rateValue) || 0;
+                    const spreadNum = Number(spreadValue) || 0;
+                    if (!rateNum) return <p>Preencha taxa e spread para ver a prévia.</p>;
+                    // Interpretação: taxa informada = base por destino (ex.: 7.5 UYU por 1 BRL)
+                    // Spread aplicado nas duas pontas: comprar destino custa mais, vender destino devolve menos.
+                    const factor = 1 + spreadNum / 100;
+                    const effectiveBuy = rateNum * factor; // base -> destino (mais caro)
+                    const effectiveSell = rateNum / factor; // destino -> base (recebe menos)
+                    const baseSample = 1000;
+                    const toAmount = baseSample / effectiveBuy;
+                    const backAmount = toAmount * effectiveSell;
+                    return (
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold">
+                          {baseSample.toLocaleString()} {baseCurrency} →{" "}
+                          {toAmount.toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          {targetCurrency}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {toAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+                          {targetCurrency} →{" "}
+                          {backAmount.toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          {baseCurrency}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Taxas: {effectiveBuy.toFixed(4)} / {effectiveSell.toFixed(4)}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <Button type="submit">Salvar</Button>
               </form>
             </div>
           </div>

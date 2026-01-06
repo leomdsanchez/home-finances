@@ -275,7 +275,7 @@ export const RecentTransactionsCard = ({
           )}
         </div>
         {fill ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white via-white/85 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent" />
         ) : null}
       </div>
     </section>

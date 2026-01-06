@@ -460,6 +460,7 @@ export const ManualTransactionModal = ({
                   name="amount"
                   placeholder="0,00"
                   inputMode="decimal"
+                  autoComplete="off"
                   autoFocus
                   value={form.amount}
                   onChange={(e) => {
@@ -503,6 +504,7 @@ export const ManualTransactionModal = ({
                   label="Nota"
                   name="note"
                   placeholder="Descrição rápida"
+                  autoComplete="off"
                   value={form.note}
                   onChange={(e) => updateField("note", e.target.value)}
                 />

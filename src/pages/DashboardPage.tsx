@@ -4,6 +4,10 @@ import { Icon } from "../components/Icon";
 import { useSession } from "../context/SessionContext";
 import supabase from "../lib/supabaseClient";
 import type { IconName } from "../components/Icon";
+import { useCurrentOrganization } from "../hooks/useCurrentOrganization";
+import { useAccounts } from "../hooks/useAccounts";
+import { useCategories } from "../hooks/useCategories";
+import { ManualTransactionModal } from "../components/ManualTransactionModal";
 
 const EmptyState = ({
   icon,
@@ -24,7 +28,7 @@ type QuickAction = {
   key: "manual" | "camera" | "mic";
   label: string;
   hint: string;
-  icon: "keyboard" | "camera" | "mic";
+  icon: IconName;
 };
 
 type MenuItemKey =
@@ -73,9 +77,13 @@ const actions: QuickAction[] = [
 const DashboardPage = () => {
   const { session } = useSession();
   const navigate = useNavigate();
+  const { organization, loading: orgLoading } = useCurrentOrganization();
+  const { accounts, loading: accLoading } = useAccounts(organization?.id);
+  const { categories, loading: catLoading } = useCategories(organization?.id);
   const [showRecents, setShowRecents] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const [showManualModal, setShowManualModal] = useState(false);
 
   const displayName = useMemo(() => {
     return (
@@ -106,7 +114,11 @@ const DashboardPage = () => {
   };
 
   const handleAction = (key: QuickAction["key"]) => {
-    // Aqui entram as navegações futuras para cada fluxo.
+    if (key === "manual") {
+      setShowManualModal(true);
+      return;
+    }
+    // Aqui entram as navegações futuras para os demais fluxos.
     console.info("Ação selecionada:", key);
   };
 
@@ -211,6 +223,15 @@ const DashboardPage = () => {
             </div>
           ) : null}
         </section>
+
+        <ManualTransactionModal
+          open={showManualModal}
+          onClose={() => setShowManualModal(false)}
+          organization={organization}
+          accounts={accounts}
+          categories={categories}
+          loading={orgLoading || accLoading || catLoading}
+        />
       </div>
     </main>
   );

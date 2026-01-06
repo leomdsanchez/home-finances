@@ -20,6 +20,7 @@ import {
   ArrowLeft,
   Copy,
   Pencil,
+  ArrowLeftRight,
   type LucideProps,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ type IconName =
   | "trash"
   | "arrow-left"
   | "copy"
+  | "transfer"
   | "edit";
 
 const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
@@ -67,6 +69,7 @@ const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   trash: Trash2,
   "arrow-left": ArrowLeft,
   copy: Copy,
+  transfer: ArrowLeftRight,
   edit: Pencil,
 };
 

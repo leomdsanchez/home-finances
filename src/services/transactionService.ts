@@ -6,7 +6,6 @@ import {
 } from "../mappers/transaction";
 import type { Transaction } from "../types/domain";
 import type { CreateTransferParams } from "../types/serviceInputs";
-import { randomUUID } from "crypto";
 
 export const createTransaction = async (
   client: SupabaseClient,
@@ -71,7 +70,7 @@ export const updateTransaction = async (
     amount?: number;
     note?: string | null;
     date?: string;
-    categoryId?: string;
+    categoryId?: string | null;
   }
 ): Promise<Transaction> => {
   const { organizationId, transactionId, ...fields } = params;
@@ -79,7 +78,7 @@ export const updateTransaction = async (
   if (fields.amount !== undefined) updates.amount = fields.amount;
   if (fields.note !== undefined) updates.note = fields.note;
   if (fields.date) updates.date = fields.date;
-  if (fields.categoryId) updates.category_id = fields.categoryId;
+  if (fields.categoryId !== undefined) updates.category_id = fields.categoryId ?? null;
 
   const { data, error } = await client
     .from("transactions")
@@ -125,7 +124,7 @@ export const createTransfer = async (
   client: SupabaseClient,
   params: CreateTransferParams
 ): Promise<{ from: Transaction; to: Transaction }> => {
-  const transferId = randomUUID();
+  const transferId = crypto.randomUUID();
   const { amount, exchangeRate, currencyFrom, currencyTo, date, note } = params;
 
   const { data: accounts, error: accountsError } = await client

@@ -239,15 +239,15 @@ export const RecentTransactionsCard = ({
                 className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-3"
               >
                 <div className="flex items-start gap-3">
-                  <span
-                    className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${
-                      isExpense ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
-                    }`}
-                  >
-                    <Icon
-                      name={isExpense ? "arrow-down-right" : "arrow-up-right"}
-                      className="h-4 w-4"
-                    />
+                    <span
+                      className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${
+                        isExpense ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
+                      }`}
+                    >
+                      <Icon
+                        name={isExpense ? "arrow-up-right" : "arrow-down-right"}
+                        className="h-4 w-4"
+                      />
                   </span>
                   <div className="space-y-1 text-sm">
                     <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>

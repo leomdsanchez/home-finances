@@ -168,7 +168,7 @@ const QuickAddPage = () => {
   );
 
   return (
-    <main className="page-shell items-start h-screen max-h-screen overflow-hidden">
+    <main className="page-shell items-start h-[100dvh] min-h-[100dvh] overflow-hidden">
       <div className="relative mx-auto flex h-full w-full max-w-md flex-col gap-4 pt-1 pb-24">
         <header className="relative flex items-center justify-between pt-2 px-0">
           <div className="space-y-1">

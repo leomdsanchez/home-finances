@@ -23,7 +23,10 @@ create table if not exists org_exchange_defaults (
 alter table org_exchange_defaults enable row level security;
 
 -- Permitir que membros da organização gerenciem suas taxas.
-create policy if not exists org_exchange_defaults_select on org_exchange_defaults
+drop policy if exists org_exchange_defaults_select on org_exchange_defaults;
+drop policy if exists org_exchange_defaults_write on org_exchange_defaults;
+
+create policy org_exchange_defaults_select on org_exchange_defaults
   for select using (
     exists (
       select 1 from organization_members om
@@ -32,7 +35,7 @@ create policy if not exists org_exchange_defaults_select on org_exchange_default
     )
   );
 
-create policy if not exists org_exchange_defaults_write on org_exchange_defaults
+create policy org_exchange_defaults_write on org_exchange_defaults
   for all using (
     exists (
       select 1 from organization_members om

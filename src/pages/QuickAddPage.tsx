@@ -231,7 +231,10 @@ const QuickAddPage = () => {
                     <button
                       type="button"
                       key={item.key}
-                      onClick={() => handleMenuSelect(item.key)}
+                      onClick={() => {
+                        handleMenuSelect(item.key);
+                        setMenuOpen(false);
+                      }}
                       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-800 transition hover:bg-slate-50"
                     >
                       <Icon name={item.icon} className="h-4 w-4 text-slate-500" />

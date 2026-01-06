@@ -34,6 +34,7 @@ type Props = {
   limit?: number;
   refreshKey?: number;
   fill?: boolean;
+  className?: string;
 };
 
 export const RecentTransactionsCard = ({
@@ -42,6 +43,7 @@ export const RecentTransactionsCard = ({
   limit = 30,
   refreshKey = 0,
   fill = false,
+  className = "",
 }: Props) => {
   const [recents, setRecents] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
@@ -166,18 +168,19 @@ export const RecentTransactionsCard = ({
     })} ${code}`;
   };
 
+  const containerClassName = `space-y-3 ${fill ? "flex min-h-0 flex-col" : ""} ${className}`.trim();
+
   return (
-    <section className={`space-y-3 ${fill ? "flex min-h-0 flex-col" : ""}`}>
-      <div className={`${fill ? "sticky top-0 z-10 bg-white py-2" : ""}`}>
+    <section className={containerClassName}>
+      <div className={`${fill ? "sticky top-0 z-10 py-2" : ""}`}>
         <p className="text-sm font-semibold text-slate-800">Últimos lançamentos</p>
-        <p className="muted">Entradas, saídas e transferências.</p>
       </div>
-      <div className="relative flex-1 min-h-0">
+      <div className="relative flex-1 min-h-0 flex flex-col">
         <div
           className={`relative space-y-2 ${
             fill
-              ? "flex-1 min-h-0 overflow-y-auto pb-4 bg-white px-2"
-              : "max-h-72 overflow-y-auto"
+              ? "flex-1 min-h-0 overflow-y-auto pb-4 px-2 scrollbar-hide"
+              : "max-h-72 overflow-y-auto scrollbar-hide"
           }`}
         >
           {loading ? (
@@ -206,25 +209,25 @@ export const RecentTransactionsCard = ({
                   className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-3"
                 >
                   <div className="flex items-start gap-3">
-                    <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-purple-50 text-purple-600">
-                      <Icon name="transfer" className="h-4 w-4" />
-                    </span>
+                    <div className="mt-1">
+                      <Icon name="transfer" className="h-4 w-4 text-purple-600" />
+                    </div>
                     <div className="space-y-1 text-sm">
                       <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
                       <div className="text-xs text-slate-500 space-y-0.5">
                         <p className="flex items-center gap-1">
-                          <Icon name="arrow-up-right" className="h-3 w-3" />
+                          <Icon name="arrow-up-right" className="h-3 w-3 text-slate-500" />
                           {accountNameById.get(item.fromAccountId) ?? "Conta origem"}
                         </p>
                         <p className="flex items-center gap-1">
-                          <Icon name="arrow-down-right" className="h-3 w-3" />
+                          <Icon name="arrow-down-right" className="h-3 w-3 text-slate-500" />
                           {accountNameById.get(item.toAccountId) ?? "Conta destino"}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right text-sm">
-                    <p className="font-semibold text-slate-900">{formatAmount(item.amountTo, item.currencyTo)}</p>
+                  <div className="text-right text-sm text-slate-900">
+                    <p className="font-semibold">{formatAmount(item.amountTo, item.currencyTo)}</p>
                     <p className="text-xs text-slate-500">
                       {new Date(item.date).toLocaleDateString("pt-BR")}
                     </p>
@@ -242,16 +245,12 @@ export const RecentTransactionsCard = ({
                 className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-3"
               >
                 <div className="flex items-start gap-3">
-                    <span
-                      className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${
-                        isExpense ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
-                      }`}
-                    >
-                      <Icon
-                        name={isExpense ? "arrow-up-right" : "arrow-down-right"}
-                        className="h-4 w-4"
-                      />
-                  </span>
+                  <div className="mt-1">
+                    <Icon
+                      name={isExpense ? "arrow-up-right" : "arrow-down-right"}
+                      className={`h-4 w-4 ${isExpense ? "text-red-500" : "text-emerald-600"}`}
+                    />
+                  </div>
                   <div className="space-y-1 text-sm">
                     <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
                     <p className="text-xs text-slate-500">
@@ -260,9 +259,7 @@ export const RecentTransactionsCard = ({
                   </div>
                 </div>
                 <div
-                  className={`text-right text-sm font-semibold ${
-                    isExpense ? "text-red-500" : "text-emerald-600"
-                  }`}
+                  className="text-right text-sm font-semibold text-slate-900"
                 >
                   {isExpense ? "-" : "+"}
                   {formatAmount(item.amount, item.currency)}

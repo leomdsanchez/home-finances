@@ -78,11 +78,19 @@ const getCurrencyDecimals = (code?: string) => {
 const formatAmount = (value: string, decimals: number) => {
   const digits = value.replace(/\D/g, "");
   if (!digits) return "";
-  if (decimals === 0) return String(parseInt(digits, 10));
+
+  const formatInt = (n: number) => n.toLocaleString("pt-BR").replace(/,/g, ".");
+
+  if (decimals === 0) {
+    const intVal = parseInt(digits, 10);
+    return Number.isFinite(intVal) ? formatInt(intVal) : "";
+  }
+
   const padded = digits.padStart(decimals + 1, "0");
-  const integerPart = String(parseInt(padded.slice(0, -decimals), 10));
+  const intRaw = parseInt(padded.slice(0, -decimals), 10);
   const fraction = padded.slice(-decimals);
-  return `${integerPart},${fraction}`;
+  const intFormatted = Number.isFinite(intRaw) ? formatInt(intRaw) : "0";
+  return `${intFormatted},${fraction}`;
 };
 
 const parseAmountToNumber = (value: string) => {

@@ -10,7 +10,8 @@ import {
 import { Input } from "../Input";
 import { Button } from "../Button";
 import { Icon } from "../Icon";
-import type { Account, Category, Organization } from "../../types/domain";
+import type { ManualTransactionModalProps } from "./types";
+import type { Account } from "../../types/domain";
 import supabase from "../../lib/supabaseClient";
 import { createTransaction, createTransfer } from "../../services/transactionService";
 import { useExchangeDefaults } from "../../hooks/useExchangeDefaults";
@@ -21,15 +22,6 @@ type StepId = "type" | "account" | "amount" | "details";
 const STEP_ORDER: StepId[] = ["type", "account", "amount", "details"];
 const ZERO_DECIMAL_CURRENCIES = new Set(["ARS", "CLP", "COP", "MXN", "PYG", "DOP", "UYU", "PEN"]);
 const TWO_DECIMAL_CURRENCIES = new Set(["BRL", "USD", "EUR"]);
-
-type Props = {
-  open: boolean;
-  onClose: () => void;
-  organization?: Organization | null;
-  accounts: Account[];
-  categories: Category[];
-  loading?: boolean;
-};
 
 type FormState = {
   mode: Mode;
@@ -136,35 +128,43 @@ type ModeToggleProps = {
 const ModeToggle = ({ mode, onChange }: ModeToggleProps) => (
   <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1 text-sm font-medium">
     {[
-      { key: "expense", label: "Saída", icon: "arrow-down-right" as const },
-      { key: "income", label: "Entrada", icon: "arrow-up-right" as const },
-      { key: "transfer", label: "Transferência", icon: "transfer" as const },
-    ].map(({ key, label, icon }) => (
-      <button
-        key={key}
-        type="button"
-        onClick={() => onChange(key as Mode)}
-        className={`flex-1 rounded-full px-3 py-2 transition ${
-          mode === key ? "bg-white shadow-sm text-slate-900" : "text-slate-500"
-        }`}
-      >
-        <span className="flex items-center justify-center gap-2">
-          <Icon name={icon} className="h-4 w-4" />
-          {label}
-        </span>
-      </button>
-    ))}
+      { key: "expense", label: "Saída", icon: "arrow-down-right" as const, color: "text-red-600" },
+      { key: "income", label: "Entrada", icon: "arrow-up-right" as const, color: "text-green-600" },
+      { key: "transfer", label: "Transf.", icon: "transfer" as const, color: "text-purple-600" },
+    ].map(({ key, label, icon, color }) => {
+      const active = mode === key;
+      return (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onChange(key as Mode)}
+          className={`flex-1 rounded-full px-3 py-2 transition ${
+            active ? "bg-white shadow-sm text-slate-900" : "text-slate-500"
+          }`}
+        >
+          <span className="flex items-center justify-center gap-2">
+            <span
+              className={`flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 ${color}`}
+            >
+              <Icon name={icon} className="h-4 w-4" />
+            </span>
+            {active ? label : null}
+          </span>
+        </button>
+      );
+    })}
   </div>
 );
 
 export const ManualTransactionModal = ({
   open,
   onClose,
+  onSaved,
   organization,
   accounts,
   categories,
   loading,
-}: Props) => {
+}: ManualTransactionModalProps) => {
   const [form, dispatch] = useReducer(formReducer, accounts, (accs) =>
     createInitialState(accs),
   );
@@ -319,6 +319,7 @@ export const ManualTransactionModal = ({
           note: form.note || null,
         });
         onClose();
+        onSaved?.();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Falha ao salvar transferência.");
       } finally {
@@ -343,6 +344,7 @@ export const ManualTransactionModal = ({
         exchangeRate: 1,
       });
       onClose();
+      onSaved?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao salvar lançamento.");
     } finally {

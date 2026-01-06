@@ -163,7 +163,14 @@ const QuickAddPage = () => {
       <div className="flex w-full max-w-md flex-col gap-5 pt-1">
         <header className="relative flex items-center justify-between pt-2">
           <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.08em] text-slate-500">Saldo</p>
+            <p className="text-xs uppercase tracking-[0.08em] text-slate-500">
+              Saldo
+              {organization?.baseCurrency ? (
+                <span className="ml-1 text-[0.65rem] font-medium text-slate-500">
+                  ({organization.baseCurrency.toUpperCase()})
+                </span>
+              ) : null}
+            </p>
             {balanceLoading || orgLoading ? (
               <div className="flex items-center gap-2 text-slate-500">
                 <Icon name="loader" className="h-4 w-4 animate-spin" />
@@ -175,11 +182,6 @@ const QuickAddPage = () => {
               <>
                 <p className="text-3xl font-semibold text-slate-900">
                   {formatBalanceValue(balance.value, organization?.baseCurrency ?? "USD")}
-                  {organization?.baseCurrency ? (
-                    <span className="ml-2 align-super text-sm font-medium text-slate-500">
-                      ({organization.baseCurrency.toUpperCase()})
-                    </span>
-                  ) : null}
                 </p>
                 {balance.missingRate ? (
                   <p className="text-xs text-amber-600">

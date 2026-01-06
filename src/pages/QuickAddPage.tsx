@@ -148,14 +148,14 @@ const QuickAddPage = () => {
     void fetchBalance();
   }, [organization, recentsVersion, session]);
 
-  const formatBalance = (value?: number, currency?: string) => {
+  const formatBalanceValue = (value?: number, currency?: string) => {
     if (typeof value !== "number" || Number.isNaN(value)) return "—";
     const label = currency ? currency.toUpperCase() : "";
     const noCents = label === "UYU";
-    return `${value.toLocaleString("pt-BR", {
+    return value.toLocaleString("pt-BR", {
       minimumFractionDigits: noCents ? 0 : 2,
       maximumFractionDigits: noCents ? 0 : 2,
-    })} ${label}`.trim();
+    });
   };
 
   return (
@@ -174,7 +174,12 @@ const QuickAddPage = () => {
             ) : balance ? (
               <>
                 <p className="text-3xl font-semibold text-slate-900">
-                  {formatBalance(balance.value, organization?.baseCurrency ?? "USD")}
+                  {formatBalanceValue(balance.value, organization?.baseCurrency ?? "USD")}
+                  {organization?.baseCurrency ? (
+                    <span className="ml-2 align-super text-sm font-medium text-slate-500">
+                      ({organization.baseCurrency.toUpperCase()})
+                    </span>
+                  ) : null}
                 </p>
                 {balance.missingRate ? (
                   <p className="text-xs text-amber-600">

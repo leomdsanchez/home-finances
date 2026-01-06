@@ -39,27 +39,6 @@ const menuEntries: MenuEntry[] = [
   { key: "logout", label: "Sair", icon: "logout" },
 ];
 
-const actions: QuickAction[] = [
-  {
-    key: "manual",
-    label: "Lançamento manual",
-    hint: "Digita e salva",
-    icon: "keyboard",
-  },
-  {
-    key: "camera",
-    label: "Com imagem",
-    hint: "Fotografa o recibo",
-    icon: "camera",
-  },
-  {
-    key: "mic",
-    label: "Com áudio",
-    hint: "Fala e converte",
-    icon: "mic",
-  },
-];
-
 const QuickAddPage = () => {
   const { session } = useSession();
   const navigate = useNavigate();
@@ -69,6 +48,8 @@ const QuickAddPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [showManualModal, setShowManualModal] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+  const holdTimer = useRef<number | null>(null);
   const [recentsVersion, setRecentsVersion] = useState(0);
   const [balance, setBalance] = useState<{ value: number; missingRate: boolean } | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
@@ -97,10 +78,12 @@ const QuickAddPage = () => {
   const handleAction = (key: QuickAction["key"]) => {
     if (key === "manual") {
       setShowManualModal(true);
+      setFabOpen(false);
       return;
     }
-    // Aqui entram as navegações futuras para os demais fluxos.
+    // Navegações futuras para os demais fluxos.
     console.info("Ação selecionada:", key);
+    setFabOpen(false);
   };
 
   useEffect(() => {
@@ -158,9 +141,35 @@ const QuickAddPage = () => {
     });
   };
 
+  const startHold = () => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+    }
+    holdTimer.current = window.setTimeout(() => {
+      setShowManualModal(true);
+      setFabOpen(false);
+    }, 600);
+  };
+
+  const endHold = () => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  };
+
+  useEffect(
+    () => () => {
+      if (holdTimer.current) {
+        clearTimeout(holdTimer.current);
+      }
+    },
+    [],
+  );
+
   return (
     <main className="page-shell items-start">
-      <div className="flex w-full max-w-md flex-col gap-5 pt-1">
+      <div className="relative flex w-full max-w-md flex-col gap-5 pt-1 pb-24">
         <header className="relative flex items-center justify-between pt-2">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.08em] text-slate-500">
@@ -235,38 +244,63 @@ const QuickAddPage = () => {
           </div>
         </header>
 
-        <section className="card space-y-4">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-slate-800">Adicionar despesa</p>
-            <p className="muted">Escolha o jeito mais rápido pra você.</p>
-          </div>
-          <div className="grid gap-2">
-            {actions.map((action) => (
-              <button
-                key={action.key}
-                onClick={() => handleAction(action.key)}
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-700">
-                    <Icon name={action.icon} className="h-5 w-5" />
-                  </span>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-slate-900">{action.label}</p>
-                    <p className="text-xs text-slate-500">{action.hint}</p>
-                  </div>
-                </div>
-                <Icon name="arrow-right" className="h-4 w-4 text-slate-300" />
-              </button>
-            ))}
-          </div>
-        </section>
+      <RecentTransactionsCard
+        organizationId={organization?.id}
+        accounts={accounts}
+        refreshKey={recentsVersion}
+      />
 
-        <RecentTransactionsCard
-          organizationId={organization?.id}
-          accounts={accounts}
-          refreshKey={recentsVersion}
-        />
+      {/* FAB */}
+      <div className="fixed bottom-6 right-6 z-30 flex flex-col items-end gap-3">
+        <div
+          className={`flex flex-col items-end gap-3 transition-all duration-200 ${
+            fabOpen ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 translate-y-2"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => handleAction("manual")}
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+            style={{ transitionDelay: fabOpen ? "40ms" : "0ms" }}
+            aria-label="Lançamento manual"
+          >
+            <Icon name="keyboard" className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAction("camera")}
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+            style={{ transitionDelay: fabOpen ? "80ms" : "0ms" }}
+            aria-label="Lançar com imagem"
+          >
+            <Icon name="camera" className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAction("mic")}
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+            style={{ transitionDelay: fabOpen ? "120ms" : "0ms" }}
+            aria-label="Lançar com áudio"
+          >
+            <Icon name="mic" className="h-5 w-5" />
+          </button>
+        </div>
+        <button
+          type="button"
+          onMouseDown={startHold}
+          onMouseUp={endHold}
+          onMouseLeave={endHold}
+          onTouchStart={startHold}
+          onTouchEnd={endHold}
+          onClick={() => setFabOpen((v) => !v)}
+          className={`flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-700 active:bg-blue-800 ${
+            fabOpen ? "rotate-45" : ""
+          }`}
+          aria-label="Ações rápidas"
+        >
+          <Icon name={fabOpen ? "close" : "add"} className="h-6 w-6 transition" />
+        </button>
+      </div>
 
         <ManualTransactionModal
           open={showManualModal}

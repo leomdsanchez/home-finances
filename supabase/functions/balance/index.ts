@@ -96,9 +96,11 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     let organizationId: string | undefined;
+    let force = false;
     try {
       const body = await req.json();
       organizationId = body?.organizationId;
+      force = Boolean(body?.force);
     } catch (err) {
       console.error("balance: invalid JSON body", err);
       return jsonResponse(400, { error: "Invalid JSON body" });
@@ -128,7 +130,7 @@ serve(async (req: Request) => {
     console.log("balance: before org query");
     const { data: org, error: orgError } = await supabase
       .from("organizations")
-      .select("base_currency")
+      .select("base_currency, balance_value, balance_currency, balance_updated_at, balance_missing_rate")
       .eq("id", organizationId)
       .maybeSingle();
 
@@ -137,163 +139,35 @@ serve(async (req: Request) => {
       return jsonResponse(400, { error: orgError?.message ?? "Organization not found" });
     }
 
-    const baseCurrency = (org.base_currency as string).toUpperCase();
+    let balanceValue = org.balance_value as number | null;
+    let balanceCurrency = (org.balance_currency as string | null)?.toUpperCase() ?? null;
+    let balanceUpdatedAt = org.balance_updated_at as string | null;
+    let balanceMissingRate = Boolean(org.balance_missing_rate);
 
-    console.log("balance: before rates query");
-    const { data: rateRows, error: ratesError } = await supabase
-      .from("org_exchange_defaults")
-      .select("from_currency, to_currency, rate")
-      .eq("organization_id", organizationId);
+    const shouldRecompute = force || balanceValue === null || !balanceCurrency;
 
-    if (ratesError) {
-      console.error("balance: rates error", ratesError);
-      return jsonResponse(400, { error: ratesError.message });
-    }
-
-    const rates: ExchangeDefault[] =
-      rateRows?.map((r) => ({
-        fromCurrency: (r.from_currency as string).toUpperCase(),
-        toCurrency: (r.to_currency as string).toUpperCase(),
-        rate: Number(r.rate),
-      })) ?? [];
-
-    console.log("balance: before accounts query");
-    const { data: accountsRows, error: accountsError } = await supabase
-      .from("accounts")
-      .select("id, name, currency")
-      .eq("organization_id", organizationId);
-
-    if (accountsError) {
-      console.error("balance: accounts error", accountsError);
-      return jsonResponse(400, { error: accountsError.message });
-    }
-
-    console.log("balance: before totals query");
-    const { data: txRows, error: txError } = await supabase
-      .from("transactions")
-      .select("currency, type, amount, account_id")
-      .eq("organization_id", organizationId);
-
-    if (txError) {
-      console.error("balance: totals error", txError);
-      return jsonResponse(400, { error: txError.message });
-    }
-
-    // agrupa em memória (evita group() não suportado pelo client)
-    const totalsMap = new Map<string, { currency: string; type: "income" | "expense"; sum: number }>();
-    (txRows ?? []).forEach((row) => {
-      const currency = (row.currency || "").toUpperCase();
-      const type = row.type === "income" ? "income" : "expense";
-      const amount = Number(row.amount) || 0;
-      if (!currency) return;
-      const key = `${currency}-${type}`;
-      const current = totalsMap.get(key) ?? { currency, type, sum: 0 };
-      current.sum += amount;
-      totalsMap.set(key, current);
-    });
-    const totalsRows = Array.from(totalsMap.values());
-
-    let totalBase = 0;
-    let missingRate = false;
-    const accountMap = new Map<string, AccountSummary>();
-
-    // inicializa contas com 0
-    (accountsRows ?? []).forEach((acc) => {
-      const currency = (acc.currency || "").toUpperCase();
-      if (!acc.id || !currency) return;
-      accountMap.set(acc.id, {
-        accountId: acc.id as string,
-        accountName: (acc.name as string) ?? null,
-        currency,
-        income: 0,
-        expense: 0,
-        balance: 0,
-        balanceInBase: 0,
+    if (shouldRecompute) {
+      console.log("balance: forcing recompute");
+      const { data: recomputed, error: recomputeError } = await supabase.rpc("recompute_org_balance", {
+        p_org_id: organizationId,
       });
-    });
-
-    (totalsRows as TotalsRow[] | null)?.forEach((row) => {
-      const currency = (row.currency || "").toUpperCase();
-      const sum = Number(row.sum) || 0;
-      const signed = row.type === "income" ? sum : -sum;
-
-      if (!currency) return;
-
-      if (currency === baseCurrency) {
-        totalBase += signed;
-        return;
+      if (recomputeError) {
+        console.error("balance: recompute error", recomputeError);
+        return jsonResponse(400, { error: recomputeError.message });
       }
-
-      const { rate } = findRateToBase(baseCurrency, currency, rates);
-
-      if (!rate) {
-        missingRate = true;
-        return;
-      }
-
-      totalBase += signed * rate; // converte destino -> base
-    });
-
-    // detalha por conta com conversão
-    (txRows ?? []).forEach((row) => {
-      const accountId = row.account_id as string | null;
-      const currency = (row.currency || "").toUpperCase();
-      const amount = Number(row.amount) || 0;
-      const type = row.type === "income" ? "income" : "expense";
-      if (!accountId || !currency) return;
-
-      const acc = accountMap.get(accountId);
-      if (!acc) {
-        // conta não listada? cria entrada ad-hoc
-        accountMap.set(accountId, {
-          accountId,
-          accountName: null,
-          currency,
-          income: 0,
-          expense: 0,
-          balance: 0,
-          balanceInBase: 0,
-        });
-      }
-      const summary = accountMap.get(accountId)!;
-      if (type === "income") {
-        summary.income += amount;
-        summary.balance += amount;
-      } else {
-        summary.expense += amount;
-        summary.balance -= amount;
-      }
-
-      if (currency === baseCurrency) {
-        summary.balanceInBase += type === "income" ? amount : -amount;
-        return;
-      }
-      const { rate } = findRateToBase(baseCurrency, currency, rates);
-      if (!rate) {
-        missingRate = true;
-        return;
-      }
-      const signed = type === "income" ? amount : -amount;
-      summary.balanceInBase += signed * rate;
-    });
-
-    const accounts = Array.from(accountMap.values());
-    const totalAccountsBase = accounts.reduce((acc, a) => acc + a.balanceInBase, 0);
-
-    console.log("balance: computed", {
-      baseCurrency,
-      totalBase,
-      missingRate,
-      rows: totalsRows?.length ?? 0,
-      accounts: accounts.length,
-    });
+      const firstRow = Array.isArray(recomputed) ? recomputed[0] : recomputed;
+      balanceValue = firstRow?.balance ?? balanceValue;
+      balanceCurrency = firstRow?.base_currency?.toUpperCase?.() ?? balanceCurrency;
+      balanceUpdatedAt = firstRow?.updated_at ?? balanceUpdatedAt;
+      balanceMissingRate = Boolean(firstRow?.missing_rate ?? balanceMissingRate);
+    }
 
     return jsonResponse(200, {
-      balance: totalBase,
-      baseCurrency,
-      missingRate,
-      accounts,
-      totalAccountsBase,
+      balance: balanceValue,
+      baseCurrency: balanceCurrency ?? (org.base_currency as string)?.toUpperCase(),
+      missingRate: balanceMissingRate,
+      updatedAt: balanceUpdatedAt,
+      usedCache: !shouldRecompute,
     });
   } catch (err) {
     console.error("balance: unhandled error", err);

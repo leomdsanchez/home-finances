@@ -36,6 +36,24 @@ type AccountSummary = {
   balanceInBase: number;
 };
 
+const findRateToBase = (
+  baseCurrency: string,
+  currency: string,
+  rates: ExchangeDefault[],
+): { rate: number | null; inverted: boolean } => {
+  const direct = rates.find(
+    (r) => r.fromCurrency === baseCurrency && r.toCurrency === currency,
+  );
+  if (direct) return { rate: direct.rate, inverted: false };
+
+  const inverse = rates.find(
+    (r) => r.fromCurrency === currency && r.toCurrency === baseCurrency,
+  );
+  if (inverse && inverse.rate) return { rate: 1 / inverse.rate, inverted: true };
+
+  return { rate: null, inverted: false };
+};
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -206,17 +224,14 @@ serve(async (req: Request) => {
         return;
       }
 
-      // rate armazenada como: quantos da moeda base valem 1 da moeda destino (base -> destino)
-      const rate = rates.find(
-        (r) => r.fromCurrency === baseCurrency && r.toCurrency === currency,
-      );
+      const { rate } = findRateToBase(baseCurrency, currency, rates);
 
       if (!rate) {
         missingRate = true;
         return;
       }
 
-      totalBase += signed * rate.rate; // converte destino -> base
+      totalBase += signed * rate; // converte destino -> base
     });
 
     // detalha por conta com conversão
@@ -253,15 +268,13 @@ serve(async (req: Request) => {
         summary.balanceInBase += type === "income" ? amount : -amount;
         return;
       }
-      const rate = rates.find(
-        (r) => r.fromCurrency === baseCurrency && r.toCurrency === currency,
-      );
+      const { rate } = findRateToBase(baseCurrency, currency, rates);
       if (!rate) {
         missingRate = true;
         return;
       }
       const signed = type === "income" ? amount : -amount;
-      summary.balanceInBase += signed * rate.rate;
+      summary.balanceInBase += signed * rate;
     });
 
     const accounts = Array.from(accountMap.values());

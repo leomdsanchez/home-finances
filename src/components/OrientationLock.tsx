@@ -1,5 +1,19 @@
 import { useEffect } from "react";
 
+type OrientationLockType =
+  | "any"
+  | "natural"
+  | "landscape"
+  | "portrait"
+  | "portrait-primary"
+  | "portrait-secondary"
+  | "landscape-primary"
+  | "landscape-secondary";
+
+type OrientationWithLock = ScreenOrientation & {
+  lock?: (orientation: OrientationLockType) => Promise<void>;
+};
+
 // Tenta reforçar a orientação retrato em tempo de execução.
 export const OrientationLock = () => {
   useEffect(() => {
@@ -7,9 +21,10 @@ export const OrientationLock = () => {
 
     const tryLock = async () => {
       // API disponível apenas em contextos seguros e browsers compatíveis.
-      if (!("orientation" in screen) || typeof screen.orientation.lock !== "function") return;
+      const orientation = "orientation" in screen ? (screen.orientation as OrientationWithLock) : null;
+      if (!orientation?.lock) return;
       try {
-        await screen.orientation.lock("portrait");
+        await orientation.lock("portrait");
       } catch (err) {
         console.warn("Falhou ao travar orientação:", err);
       }

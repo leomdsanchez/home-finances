@@ -253,7 +253,7 @@ const QuickAddPage = () => {
               fill
             />
           </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white/95 via-white/70 to-transparent backdrop-blur-[2px]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white via-white/90 to-transparent" />
         </div>
 
       {/* FAB */}

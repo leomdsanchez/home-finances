@@ -169,7 +169,7 @@ const QuickAddPage = () => {
 
   return (
     <main className="page-shell items-start h-[100dvh] min-h-[100dvh] overflow-hidden">
-      <div className="relative mx-auto flex h-full w-full max-w-md flex-col gap-4 pt-1 pb-12">
+      <div className="relative mx-auto flex h-full w-full max-w-md flex-col gap-4 pt-1 pb-8">
         <header className="relative flex items-center justify-between pt-2 px-0">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.08em] text-slate-500">
@@ -253,7 +253,7 @@ const QuickAddPage = () => {
               fill
             />
           </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white via-white/90 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-white via-white/90 to-transparent" />
         </div>
 
       {/* FAB */}

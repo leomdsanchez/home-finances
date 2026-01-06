@@ -148,7 +148,7 @@ const QuickAddPage = () => {
     holdTimer.current = window.setTimeout(() => {
       setShowManualModal(true);
       setFabOpen(false);
-    }, 600);
+    }, 400);
   };
 
   const endHold = () => {

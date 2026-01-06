@@ -171,7 +171,7 @@ export const RecentTransactionsCard = ({
       </div>
       <div className="relative flex-1 min-h-0">
         <div
-          className={`space-y-2 ${
+          className={`relative space-y-2 ${
             fill
               ? "flex-1 min-h-0 overflow-y-auto pb-16 bg-white px-2"
               : "max-h-72 overflow-y-auto"
@@ -275,10 +275,10 @@ export const RecentTransactionsCard = ({
               );
             })
           )}
+          {fill ? (
+            <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white/95 via-white/70 to-transparent backdrop-blur-[2px] z-10" />
+          ) : null}
         </div>
-        {fill ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white/95 via-white/70 to-transparent backdrop-blur-[2px] z-10" />
-        ) : null}
       </div>
     </section>
   );

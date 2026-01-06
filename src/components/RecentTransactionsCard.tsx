@@ -209,8 +209,14 @@ export const RecentTransactionsCard = ({
                     <div className="space-y-1 text-sm">
                       <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
                       <div className="text-xs text-slate-500 space-y-0.5">
-                        <p>{accountNameById.get(item.fromAccountId) ?? "Conta origem"}</p>
-                        <p>{accountNameById.get(item.toAccountId) ?? "Conta destino"}</p>
+                        <p className="flex items-center gap-1">
+                          <Icon name="arrow-up-right" className="h-3 w-3" />
+                          {accountNameById.get(item.fromAccountId) ?? "Conta origem"}
+                        </p>
+                        <p className="flex items-center gap-1">
+                          <Icon name="arrow-down-right" className="h-3 w-3" />
+                          {accountNameById.get(item.toAccountId) ?? "Conta destino"}
+                        </p>
                       </div>
                     </div>
                   </div>

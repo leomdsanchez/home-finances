@@ -15,55 +15,60 @@ const DashboardPage = () => {
     }
   }, [accounts, selectedAccountId]);
 
-  const renderAccountChip = (acc: Account) => {
+  const renderAccountCard = (acc: Account) => {
     const active = selectedAccountId === acc.id;
     return (
       <button
         key={acc.id}
         type="button"
         onClick={() => setSelectedAccountId(acc.id)}
-        className={`flex min-w-[180px] flex-col rounded-2xl border px-4 py-3 text-left shadow-sm transition ${
-          active
-            ? "border-blue-600 bg-blue-50 text-blue-900"
-            : "border-slate-200 bg-white text-slate-800 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-slate-50"
+        className={`flex h-full min-w-[240px] flex-col justify-between rounded-3xl bg-slate-900 p-4 text-left text-white shadow-lg shadow-slate-900/20 snap-start transition hover:translate-y-[-2px] ${
+          active ? "ring-2 ring-blue-400/60" : ""
         }`}
       >
-        <span className="text-sm font-semibold">{acc.name}</span>
-        <span className="text-xs text-slate-500">{acc.currency}</span>
+        <div className="space-y-1">
+          <p className="text-sm font-semibold">{acc.name}</p>
+          <p className="text-xs text-orange-100/80">{acc.currency}</p>
+        </div>
+        <p className="text-xs text-orange-100/70">Toque para filtrar lançamentos</p>
       </button>
     );
   };
 
   return (
     <main className="page-shell items-start h-[100dvh] min-h-[100dvh]">
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 pt-1 pb-6 min-h-0">
+      <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col gap-4 pt-1 pb-8 min-h-0">
         <header className="space-y-1">
           <p className="text-sm uppercase tracking-[0.08em] text-slate-500">Dashboard</p>
-          <h1 className="text-2xl font-semibold text-slate-900">Movimentos por conta</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Contas e movimentos</h1>
         </header>
 
-        <div className="flex flex-col gap-4 flex-1 min-h-0">
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-slate-800">Contas</p>
-              {accLoading ? <span className="text-xs text-slate-500">Carregando...</span> : null}
-            </div>
-            <div className="overflow-x-auto scrollbar-hide">
-              <div className="flex items-stretch gap-3 pb-1">
-                {accounts.map(renderAccountChip)}
+        <div className="relative flex-1 min-h-0">
+          <div className="flex h-full flex-col gap-4 px-0">
+            <div className="h-60 shrink-0 overflow-hidden">
+              <div className="flex items-center justify-between px-1 mb-2">
+                <p className="text-sm font-semibold text-slate-800">Contas</p>
+                {accLoading ? (
+                  <span className="text-xs text-slate-500">Carregando...</span>
+                ) : null}
+              </div>
+              <div className="h-full overflow-x-auto scrollbar-hide snap-x snap-mandatory">
+                <div className="flex h-full items-stretch gap-3 pr-2">
+                  {accounts.map(renderAccountCard)}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex-1 min-h-0">
-            <RecentTransactionsCard
-              organizationId={organization?.id}
-              accounts={accounts}
-              accountId={selectedAccountId}
-              refreshKey={0}
-              fill
-              className="h-full"
-            />
+            <div className="relative flex-1 min-h-0 flex flex-col scrollbar-hide">
+              <RecentTransactionsCard
+                organizationId={organization?.id}
+                accounts={accounts}
+                accountId={selectedAccountId}
+                refreshKey={0}
+                fill
+                className="h-full"
+              />
+            </div>
           </div>
         </div>
       </div>

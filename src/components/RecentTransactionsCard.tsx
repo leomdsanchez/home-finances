@@ -208,10 +208,10 @@ export const RecentTransactionsCard = ({
                     </span>
                     <div className="space-y-1 text-sm">
                       <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
-                      <p className="text-xs text-slate-500">
-                        {accountNameById.get(item.fromAccountId) ?? "Conta origem"} →{" "}
-                        {accountNameById.get(item.toAccountId) ?? "Conta destino"}
-                      </p>
+                      <div className="text-xs text-slate-500 space-y-0.5">
+                        <p>{accountNameById.get(item.fromAccountId) ?? "Conta origem"}</p>
+                        <p>{accountNameById.get(item.toAccountId) ?? "Conta destino"}</p>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right text-sm">
@@ -219,9 +219,7 @@ export const RecentTransactionsCard = ({
                     <p className="text-xs text-slate-500">
                       {new Date(item.date).toLocaleDateString("pt-BR")}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      Saída: {formatAmount(item.amountFrom, item.currencyFrom)}
-                    </p>
+                    <p className="text-xs text-slate-500">{formatAmount(item.amountFrom, item.currencyFrom)}</p>
                   </div>
                 </div>
               );

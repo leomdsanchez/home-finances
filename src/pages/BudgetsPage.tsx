@@ -8,8 +8,8 @@ import { BudgetModal } from "../components/BudgetModal";
 import type { Budget } from "../types/domain";
 
 const BudgetsPage = () => {
-  const { organization, loading: orgLoading, error: orgError } = useCurrentOrganization();
-  const { categories, loading: catLoading, error: catError } = useCategories(organization?.id);
+  const { organization, error: orgError } = useCurrentOrganization();
+  const { categories, error: catError } = useCategories(organization?.id);
   const {
     budgets,
     loading: budgetLoading,

@@ -157,11 +157,14 @@ export const RecentTransactionsCard = ({
     void fetchRecents();
   }, [organizationId, limit, refreshKey]);
 
-  const formatAmount = (value: number, currency: string) =>
-    `${value.toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })} ${currency.toUpperCase()}`;
+  const formatAmount = (value: number, currency: string) => {
+    const code = currency.toUpperCase();
+    const noCents = code === "UYU";
+    return `${value.toLocaleString("pt-BR", {
+      minimumFractionDigits: noCents ? 0 : 2,
+      maximumFractionDigits: noCents ? 0 : 2,
+    })} ${code}`;
+  };
 
   return (
     <section className={`space-y-3 ${fill ? "flex min-h-0 flex-col" : ""}`}>

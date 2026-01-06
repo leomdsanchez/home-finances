@@ -124,7 +124,7 @@ const resolveTransferCategoryId = async (
   client: SupabaseClient,
   organizationId: string,
   categoryId?: string | null,
-): Promise<string> => {
+): Promise<string | null> => {
   if (categoryId) return categoryId;
 
   const { data: existing, error: fetchError } = await client
@@ -140,20 +140,7 @@ const resolveTransferCategoryId = async (
   }
 
   if (existing?.id) return existing.id;
-
-  const { data: created, error: createError } = await client
-    .from("categories")
-    .insert({ organization_id: organizationId, name: "Transferência" })
-    .select("id")
-    .single();
-
-  if (createError || !created) {
-    throw new Error(
-      `Failed to create fallback category for transfer: ${createError?.message ?? "unknown"}`,
-    );
-  }
-
-  return created.id;
+  return null;
 };
 
 export const createTransfer = async (

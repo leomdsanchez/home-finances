@@ -260,7 +260,6 @@ export const ManualTransactionModal = ({
 
     if (step === "details") {
       if (!form.note.trim()) return "Descreva o lançamento.";
-      if (form.mode !== "transfer" && !form.categoryId) return "Selecione uma categoria.";
     }
 
     return null;
@@ -297,7 +296,6 @@ export const ManualTransactionModal = ({
       setError("Descreva o lançamento.");
       return;
     }
-    if (!category && form.mode !== "transfer") return setError("Selecione uma categoria.");
 
     if (form.mode === "transfer") {
       const toAcc = accounts.find((a) => a.id === form.toAccountId);
@@ -487,22 +485,18 @@ export const ManualTransactionModal = ({
                   onChange={(e) => updateField("note", e.target.value)}
                 />
                 {form.mode !== "transfer" ? (
-                  categories.length === 0 ? (
-                    <p className="text-xs text-red-500">Cadastre uma categoria para concluir.</p>
-                  ) : (
-                    <LabeledSelect
-                      label="Categoria"
-                      value={form.categoryId ?? ""}
-                      onChange={(value) => updateField("categoryId", value || null)}
-                    >
-                      <option value="">Selecione</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </LabeledSelect>
-                  )
+                  <LabeledSelect
+                    label="Categoria (opcional)"
+                    value={form.categoryId ?? ""}
+                    onChange={(value) => updateField("categoryId", value || null)}
+                  >
+                    <option value="">Sem categoria</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </LabeledSelect>
                 ) : (
                   <p className="text-xs text-slate-500">Transferências não usam categoria.</p>
                 )}

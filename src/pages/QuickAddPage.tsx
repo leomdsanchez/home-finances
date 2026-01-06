@@ -169,7 +169,7 @@ const QuickAddPage = () => {
 
   return (
     <main className="page-shell items-start h-screen max-h-screen overflow-hidden">
-      <div className="relative mx-auto flex h-full w-full max-w-md flex-col gap-5 pt-1 pb-24">
+      <div className="relative mx-auto flex h-full w-full max-w-md flex-col gap-4 pt-1 pb-24">
         <header className="relative flex items-center justify-between pt-2 px-0">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.08em] text-slate-500">
@@ -244,13 +244,15 @@ const QuickAddPage = () => {
           </div>
         </header>
 
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-5 px-0">
-          <RecentTransactionsCard
-            organizationId={organization?.id}
-            accounts={accounts}
-            refreshKey={recentsVersion}
-            fill
-          />
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="h-full overflow-y-auto space-y-5 px-0">
+            <RecentTransactionsCard
+              organizationId={organization?.id}
+              accounts={accounts}
+              refreshKey={recentsVersion}
+              fill
+            />
+          </div>
         </div>
 
       {/* FAB */}

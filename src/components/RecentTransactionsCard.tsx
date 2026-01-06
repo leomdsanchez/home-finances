@@ -165,7 +165,7 @@ export const RecentTransactionsCard = ({
 
   return (
     <section className={`space-y-3 ${fill ? "flex min-h-0 flex-col" : ""}`}>
-      <div>
+      <div className={`${fill ? "sticky top-0 z-10 bg-white py-2" : ""}`}>
         <p className="text-sm font-semibold text-slate-800">Últimos lançamentos</p>
         <p className="muted">Entradas, saídas e transferências.</p>
       </div>

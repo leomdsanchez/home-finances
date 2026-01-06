@@ -7,7 +7,7 @@ import type { IconName } from "../components/Icon";
 import { useCurrentOrganization } from "../hooks/useCurrentOrganization";
 import { useAccounts } from "../hooks/useAccounts";
 import { useCategories } from "../hooks/useCategories";
-import { ManualTransactionModal } from "../components/ManualTransactionModal";
+import { ManualTransactionModal } from "../components/manual";
 
 const EmptyState = ({
   icon,

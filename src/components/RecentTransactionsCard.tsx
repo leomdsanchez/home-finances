@@ -275,9 +275,6 @@ export const RecentTransactionsCard = ({
               );
             })
           )}
-          {fill ? (
-            <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white/95 via-white/70 to-transparent backdrop-blur-[2px] z-10" />
-          ) : null}
         </div>
       </div>
     </section>

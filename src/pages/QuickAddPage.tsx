@@ -298,7 +298,7 @@ const QuickAddPage = () => {
           }`}
           aria-label="Ações rápidas"
         >
-          <Icon name={fabOpen ? "close" : "add"} className="h-6 w-6 transition" />
+          <Icon name={fabOpen ? "close" : "plus"} className="h-6 w-6 transition" />
         </button>
       </div>
 

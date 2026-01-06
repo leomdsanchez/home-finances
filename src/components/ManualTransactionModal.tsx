@@ -238,6 +238,7 @@ export const ManualTransactionModal = ({
                   name="amount"
                   type="number"
                   step="0.01"
+                  min="0"
                   placeholder="0,00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -268,7 +269,7 @@ export const ManualTransactionModal = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm text-slate-600">Nota (opcional)</label>
+              <label className="text-sm text-slate-600">Nota</label>
               <Input
                 name="note"
                 placeholder="Descrição rápida"

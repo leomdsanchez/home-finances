@@ -172,7 +172,9 @@ export const RecentTransactionsCard = ({
       <div className="relative flex-1 min-h-0">
         <div
           className={`space-y-2 ${
-            fill ? "flex-1 min-h-0 overflow-y-auto pb-16" : "max-h-72 overflow-y-auto"
+            fill
+              ? "flex-1 min-h-0 overflow-y-auto pb-16 bg-slate-50 px-2"
+              : "max-h-72 overflow-y-auto"
           }`}
         >
           {loading ? (
@@ -275,7 +277,7 @@ export const RecentTransactionsCard = ({
           )}
         </div>
         {fill ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/90 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-50 via-slate-50/90 to-transparent z-10" />
         ) : null}
       </div>
     </section>

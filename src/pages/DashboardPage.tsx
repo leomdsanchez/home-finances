@@ -96,6 +96,7 @@ const DashboardPage = () => {
       perfil: "/perfil",
       organizacao: "/organizacao",
       categorias: "/categorias",
+      contas: "/contas",
     };
     const target = routes[key];
     if (target) {

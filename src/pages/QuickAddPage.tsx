@@ -74,7 +74,7 @@ const actions: QuickAction[] = [
   },
 ];
 
-const DashboardPage = () => {
+const QuickAddPage = () => {
   const { session } = useSession();
   const navigate = useNavigate();
   const { organization, loading: orgLoading } = useCurrentOrganization();
@@ -237,4 +237,4 @@ const DashboardPage = () => {
   );
 };
 
-export default DashboardPage;
+export default QuickAddPage;

@@ -2,7 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import HomePage from "../pages/HomePage.tsx";
 import SignInPage from "../pages/auth/SignInPage.tsx";
 import SignUpPage from "../pages/auth/SignUpPage.tsx";
-import DashboardPage from "../pages/DashboardPage.tsx";
+import QuickAddPage from "../pages/QuickAddPage.tsx";
 import ProfilePage from "../pages/ProfilePage.tsx";
 import OrganizationPage from "../pages/OrganizationPage.tsx";
 import CategoriesPage from "../pages/CategoriesPage.tsx";
@@ -37,8 +37,8 @@ const router = createBrowserRouter([
         element: <AuthProtectedRoute />,
         children: [
           {
-            path: "/dashboard",
-            element: <DashboardPage />,
+            path: "/quickadd",
+            element: <QuickAddPage />,
           },
           {
             path: "/perfil",

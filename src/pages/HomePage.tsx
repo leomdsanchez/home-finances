@@ -289,7 +289,7 @@ const HomePage = () => {
     if (bootstrapLoading) return;
 
     if (hasOrg) {
-      navigate("/dashboard", { replace: true });
+      navigate("/quickadd", { replace: true });
       return;
     }
 
@@ -387,7 +387,7 @@ const HomePage = () => {
         userId,
       });
       setStatus("");
-      navigate("/dashboard", { replace: true });
+      navigate("/quickadd", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao criar organização.");
       setStatus("");
@@ -411,7 +411,7 @@ const HomePage = () => {
         userId,
       });
       setStatus("");
-      navigate("/dashboard", { replace: true });
+      navigate("/quickadd", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao entrar na organização.");
       setStatus("");

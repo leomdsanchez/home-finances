@@ -35,6 +35,7 @@ type Props = {
   refreshKey?: number;
   fill?: boolean;
   className?: string;
+  accountId?: string | null;
 };
 
 export const RecentTransactionsCard = ({
@@ -44,6 +45,7 @@ export const RecentTransactionsCard = ({
   refreshKey = 0,
   fill = false,
   className = "",
+  accountId = null,
 }: Props) => {
   const [recents, setRecents] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,7 +63,7 @@ export const RecentTransactionsCard = ({
       setLoading(true);
       setError(null);
       try {
-        const { data, error: supaError } = await supabase
+        let query = supabase
           .from("transactions")
           .select(
             "id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at",
@@ -70,6 +72,12 @@ export const RecentTransactionsCard = ({
           .order("date", { ascending: false })
           .order("created_at", { ascending: false })
           .limit(50);
+
+        if (accountId) {
+          query = query.eq("account_id", accountId);
+        }
+
+        const { data, error: supaError } = await query;
 
         if (supaError) throw new Error(supaError.message);
         if (!data) return;
@@ -157,7 +165,7 @@ export const RecentTransactionsCard = ({
     };
 
     void fetchRecents();
-  }, [organizationId, limit, refreshKey]);
+  }, [organizationId, limit, refreshKey, accountId]);
 
   const formatAmount = (value: number, currency: string) => {
     const code = currency.toUpperCase();

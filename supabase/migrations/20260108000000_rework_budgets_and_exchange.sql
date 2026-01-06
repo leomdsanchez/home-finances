@@ -16,6 +16,7 @@ create table if not exists org_exchange_defaults (
   from_currency text not null,
   to_currency text not null,
   rate numeric not null,
+  spread_pct numeric not null default 0,
   updated_at timestamptz not null default now(),
   primary key (organization_id, from_currency, to_currency)
 );

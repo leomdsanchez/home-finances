@@ -6,6 +6,7 @@ import { useCurrentOrganization } from "../hooks/useCurrentOrganization";
 import { updateOrganization } from "../services/organizationService";
 import supabase from "../lib/supabaseClient";
 import { PageHeader } from "../components/PageHeader";
+import { useExchangeDefaults } from "../hooks/useExchangeDefaults";
 
 const OrganizationPage = () => {
   const { organization, loading, error, refresh } = useCurrentOrganization();
@@ -13,6 +14,17 @@ const OrganizationPage = () => {
   const [currency, setCurrency] = useState(organization?.baseCurrency ?? "USD");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const {
+    rates,
+    loading: ratesLoading,
+    error: ratesError,
+    saveRate,
+    removeRate,
+  } = useExchangeDefaults(organization?.id);
+  const [showRateModal, setShowRateModal] = useState(false);
+  const [targetCurrency, setTargetCurrency] = useState("USD");
+  const [rateValue, setRateValue] = useState("1");
+  const [spreadValue, setSpreadValue] = useState("0");
 
   // Sincroniza estado quando a org for carregada
   useEffect(() => {
@@ -117,6 +129,136 @@ const OrganizationPage = () => {
           </div>
           {renderContent()}
         </section>
+
+        <section className="card space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Taxas padrão</p>
+              <p className="muted">Usadas como default em transferências e cálculos.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setTargetCurrency(organization?.baseCurrency ?? "USD");
+                setRateValue("1");
+                setShowRateModal(true);
+              }}
+              className="rounded-full p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              aria-label="Adicionar taxa"
+            >
+              <Icon name="plus" className="h-4 w-4" />
+            </button>
+          </div>
+          {ratesLoading ? (
+            <div className="flex items-center gap-2 text-slate-500">
+              <Icon name="loader" className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Carregando...</span>
+            </div>
+          ) : ratesError ? (
+            <p className="text-sm text-red-500">{ratesError}</p>
+          ) : rates.length === 0 ? (
+            <p className="text-sm text-slate-500">Nenhuma taxa definida.</p>
+          ) : (
+            <div className="space-y-2">
+              {rates.map((r) => (
+                <div
+                  key={`${r.fromCurrency}-${r.toCurrency}`}
+                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                >
+                  <div>
+                    <p className="font-semibold text-slate-800">
+                      {r.fromCurrency} → {r.toCurrency}
+                    </p>
+                    <p className="text-xs text-slate-500">Taxa padrão: {r.rate}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeRate(r.fromCurrency, r.toCurrency)}
+                    className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                    aria-label="Remover taxa"
+                  >
+                    <Icon name="trash" className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {showRateModal && organization ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">Nova taxa padrão</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowRateModal(false)}
+                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  aria-label="Fechar modal"
+                >
+                  <Icon name="arrow-left" className="h-4 w-4" />
+                </button>
+              </div>
+              <form
+                className="space-y-3"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const rateNum = Number(rateValue);
+                  const spreadNum = Number(spreadValue) || 0;
+                  if (!rateNum || rateNum <= 0) return;
+                  await saveRate({
+                    fromCurrency: organization.baseCurrency,
+                    toCurrency: targetCurrency,
+                    rate: rateNum,
+                    spreadPct: spreadNum,
+                  });
+                  setShowRateModal(false);
+                }}
+              >
+                <div className="space-y-1">
+                  <label className="text-sm text-slate-600">De</label>
+                  <Input value={organization.baseCurrency} disabled />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm text-slate-600">Para</label>
+                  <select
+                    className="input bg-white"
+                    value={targetCurrency}
+                    onChange={(e) => setTargetCurrency(e.target.value)}
+                  >
+                    <option value="USD">USD</option>
+                    <option value="UYU">UYU</option>
+                    <option value="BRL">BRL</option>
+                    <option value="EUR">EUR</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm text-slate-600">Taxa</label>
+                  <Input
+                    name="rate"
+                    type="number"
+                    step="0.0001"
+                    value={rateValue}
+                    onChange={(e) => setRateValue(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm text-slate-600">Spread (%)</label>
+                  <Input
+                    name="spread"
+                    type="number"
+                    step="0.01"
+                    value={spreadValue}
+                    onChange={(e) => setSpreadValue(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" trailingIcon="plus">
+                  Salvar
+                </Button>
+              </form>
+            </div>
+          </div>
+        ) : null}
       </div>
     </main>
   );

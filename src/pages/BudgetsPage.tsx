@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
@@ -42,6 +42,12 @@ const BudgetsPage = () => {
     setCurrency("USD");
     setShowModal(false);
   };
+
+  useEffect(() => {
+    if (organization?.baseCurrency) {
+      setCurrency(organization.baseCurrency);
+    }
+  }, [organization?.baseCurrency]);
 
   const canRender = !orgLoading && !catLoading && organization;
 

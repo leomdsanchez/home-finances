@@ -169,8 +169,8 @@ const QuickAddPage = () => {
 
   return (
     <main className="page-shell items-start h-screen max-h-screen overflow-hidden">
-      <div className="relative flex w-full max-w-md flex-1 min-h-0 flex-col gap-5 pt-1 pb-24 overflow-hidden">
-        <header className="relative flex items-center justify-between pt-2">
+      <div className="relative mx-auto flex h-full w-full max-w-md flex-col gap-5 pt-1 pb-24">
+        <header className="relative flex items-center justify-between pt-2 px-0">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.08em] text-slate-500">
               Saldo
@@ -244,8 +244,7 @@ const QuickAddPage = () => {
           </div>
         </header>
 
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-5">
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-5 px-0">
           <RecentTransactionsCard
             organizationId={organization?.id}
             accounts={accounts}
@@ -253,7 +252,6 @@ const QuickAddPage = () => {
             fill
           />
         </div>
-      </div>
 
       {/* FAB */}
       <div className="fixed bottom-6 right-6 z-30 flex flex-col items-end gap-3">

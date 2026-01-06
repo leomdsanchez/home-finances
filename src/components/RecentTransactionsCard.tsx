@@ -31,7 +31,6 @@ type Item = TransferItem | SingleItem;
 type Props = {
   organizationId?: string;
   accounts: Account[];
-  defaultOpen?: boolean;
   limit?: number;
   refreshKey?: number;
 };
@@ -39,11 +38,9 @@ type Props = {
 export const RecentTransactionsCard = ({
   organizationId,
   accounts,
-  defaultOpen = false,
   limit = 30,
   refreshKey = 0,
 }: Props) => {
-  const [open, setOpen] = useState(defaultOpen);
   const [recents, setRecents] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +59,9 @@ export const RecentTransactionsCard = ({
       try {
         const { data, error: supaError } = await supabase
           .from("transactions")
-          .select("id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at")
+          .select(
+            "id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at",
+          )
           .eq("organization_id", organizationId)
           .order("date", { ascending: false })
           .order("created_at", { ascending: false })
@@ -139,7 +138,7 @@ export const RecentTransactionsCard = ({
                 accountId: leg.accountId,
                 date: leg.date,
                 note: leg.note,
-              })
+              }),
             );
           }
         });
@@ -163,124 +162,111 @@ export const RecentTransactionsCard = ({
     })} ${currency.toUpperCase()}`;
 
   return (
-    <section className="card space-y-3">
-      <button
-        className="flex w-full items-center justify-between text-left"
-        onClick={() => setOpen((prev) => !prev)}
-      >
-        <div>
-          <p className="text-sm font-semibold text-slate-800">Últimos lançamentos</p>
-          <p className="muted">Entradas, saídas e transferências.</p>
-        </div>
-        <Icon
-          name="arrow-right"
-          className={`h-4 w-4 text-slate-300 transition ${open ? "rotate-90" : ""}`}
-        />
-      </button>
-      {open ? (
-        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4">
-          {loading ? (
-            <div className="flex items-center gap-2 text-slate-500">
-              <Icon name="loader" className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Carregando...</span>
+    <section className="space-y-3">
+      <div>
+        <p className="text-sm font-semibold text-slate-800">Últimos lançamentos</p>
+        <p className="muted">Entradas, saídas e transferências.</p>
+      </div>
+      <div className="max-h-72 space-y-2 overflow-y-auto">
+        {loading ? (
+          <div className="flex items-center gap-2 text-slate-500">
+            <Icon name="loader" className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Carregando...</span>
+          </div>
+        ) : error ? (
+          <p className="text-sm text-red-500">{error}</p>
+        ) : recents.length === 0 ? (
+          <div className="text-center text-slate-500">
+            <div className="flex flex-col items-center gap-2 text-slate-500">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm">
+                <Icon name="mic" className="h-5 w-5" />
+              </span>
+              <p className="text-sm">Nenhum lançamento ainda. Adicione o primeiro.</p>
             </div>
-          ) : error ? (
-            <p className="text-sm text-red-500">{error}</p>
-          ) : recents.length === 0 ? (
-            <div className="text-center text-slate-500">
-              <div className="flex flex-col items-center gap-2 text-slate-500">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm">
-                  <Icon name="mic" className="h-5 w-5" />
-                </span>
-                <p className="text-sm">Nenhum lançamento ainda. Adicione o primeiro.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="max-h-72 space-y-2 overflow-y-auto">
-              {recents.map((item) => {
-                if (item.kind === "transfer") {
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-purple-50 text-purple-600">
-                          <Icon name="transfer" className="h-4 w-4" />
-                        </span>
-                        <div className="space-y-1 text-sm">
-                          <p className="font-semibold text-slate-900">Transferência</p>
-                          <p className="text-xs text-slate-500">
-                            {accountNameById.get(item.fromAccountId) ?? "Conta origem"} →{" "}
-                            {accountNameById.get(item.toAccountId) ?? "Conta destino"}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {new Date(item.date).toLocaleDateString("pt-BR")}
-                          </p>
-                          {item.note ? (
-                            <p className="text-xs text-slate-500 line-clamp-1">{item.note}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="text-right text-sm">
-                        <p className="font-semibold text-slate-900">
-                          {formatAmount(item.amountTo, item.currencyTo)}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          Saída: {formatAmount(item.amountFrom, item.currencyFrom)}
-                        </p>
-                      </div>
+          </div>
+        ) : (
+          recents.map((item) => {
+            if (item.kind === "transfer") {
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-purple-50 text-purple-600">
+                      <Icon name="transfer" className="h-4 w-4" />
+                    </span>
+                    <div className="space-y-1 text-sm">
+                      <p className="font-semibold text-slate-900">Transferência</p>
+                      <p className="text-xs text-slate-500">
+                        {accountNameById.get(item.fromAccountId) ?? "Conta origem"} →{" "}
+                        {accountNameById.get(item.toAccountId) ?? "Conta destino"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {new Date(item.date).toLocaleDateString("pt-BR")}
+                      </p>
+                      {item.note ? (
+                        <p className="text-xs text-slate-500 line-clamp-1">{item.note}</p>
+                      ) : null}
                     </div>
-                  );
-                }
-
-                const isExpense = item.kind === "expense";
-                return (
-                  <div
-                    key={item.id}
-                    className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${
-                          isExpense ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
-                        }`}
-                      >
-                        <Icon
-                          name={isExpense ? "arrow-down-right" : "arrow-up-right"}
-                          className="h-4 w-4"
-                        />
-                      </span>
-                      <div className="space-y-1 text-sm">
-                        <p className="font-semibold text-slate-900">
-                          {isExpense ? "Saída" : "Entrada"}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {accountNameById.get(item.accountId) ?? "Conta"}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {new Date(item.date).toLocaleDateString("pt-BR")}
-                        </p>
-                        {item.note ? (
-                          <p className="text-xs text-slate-500 line-clamp-1">{item.note}</p>
-                        ) : null}
-                      </div>
-                    </div>
-                    <p
-                      className={`text-sm font-semibold ${
-                        isExpense ? "text-red-600" : "text-green-600"
-                      }`}
-                    >
-                      {isExpense ? "-" : "+"}
-                      {formatAmount(item.amount, item.currency)}
+                  </div>
+                  <div className="text-right text-sm">
+                    <p className="font-semibold text-slate-900">
+                      {formatAmount(item.amountTo, item.currencyTo)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Saída: {formatAmount(item.amountFrom, item.currencyFrom)}
                     </p>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : null}
+                </div>
+              );
+            }
+
+            const isExpense = item.kind === "expense";
+            return (
+              <div
+                key={item.id}
+                className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${
+                      isExpense ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
+                    }`}
+                  >
+                    <Icon
+                      name={isExpense ? "arrow-down-right" : "arrow-up-right"}
+                      className="h-4 w-4"
+                    />
+                  </span>
+                  <div className="space-y-1 text-sm">
+                    <p className="font-semibold text-slate-900">
+                      {isExpense ? "Saída" : "Entrada"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {accountNameById.get(item.accountId) ?? "Conta"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {new Date(item.date).toLocaleDateString("pt-BR")}
+                    </p>
+                    {item.note ? (
+                      <p className="text-xs text-slate-500 line-clamp-1">{item.note}</p>
+                    ) : null}
+                  </div>
+                </div>
+                <div
+                  className={`text-right text-sm font-semibold ${
+                    isExpense ? "text-red-500" : "text-emerald-600"
+                  }`}
+                >
+                  {isExpense ? "-" : "+"}
+                  {formatAmount(item.amount, item.currency)}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </section>
   );
 };

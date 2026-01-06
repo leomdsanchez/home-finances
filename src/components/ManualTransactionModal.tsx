@@ -54,7 +54,8 @@ export const ManualTransactionModal = ({
     !!accountId &&
     (mode === "transfer" ? !!toAccountId && !!exchangeRate && Number(exchangeRate) > 0 : true) &&
     !!amount &&
-    Number(amount) > 0;
+    Number(amount) > 0 &&
+    note.trim().length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +66,10 @@ export const ManualTransactionModal = ({
       return;
     }
     const category = categoryId ? categories.find((c) => c.id === categoryId) : null;
+    if (!note.trim()) {
+      setError("Descreva o lançamento.");
+      return;
+    }
     if (!category && mode !== "transfer") return setError("Selecione uma categoria.");
 
     if (mode === "transfer") {

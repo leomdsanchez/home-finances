@@ -195,86 +195,78 @@ export const RecentTransactionsCard = ({
             </div>
           ) : (
             recents.map((item) => {
-              if (item.kind === "transfer") {
-                return (
-                  <div
-                    key={item.id}
-                    className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-purple-50 text-purple-600">
-                        <Icon name="transfer" className="h-4 w-4" />
-                      </span>
-                      <div className="space-y-1 text-sm">
-                        <p className="font-semibold text-slate-900">Transferência</p>
-                        <p className="text-xs text-slate-500">
-                          {accountNameById.get(item.fromAccountId) ?? "Conta origem"} →{" "}
-                          {accountNameById.get(item.toAccountId) ?? "Conta destino"}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {new Date(item.date).toLocaleDateString("pt-BR")}
-                        </p>
-                        {item.note ? (
-                          <p className="text-xs text-slate-500 line-clamp-1">{item.note}</p>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="text-right text-sm">
-                      <p className="font-semibold text-slate-900">
-                        {formatAmount(item.amountTo, item.currencyTo)}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Saída: {formatAmount(item.amountFrom, item.currencyFrom)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              }
-
-              const isExpense = item.kind === "expense";
+            if (item.kind === "transfer") {
+              const title = item.note && item.note.trim().length > 0 ? item.note : "Transferência";
               return (
                 <div
                   key={item.id}
-                  className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
+                  className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-3"
                 >
                   <div className="flex items-start gap-3">
-                    <span
-                      className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${
-                        isExpense ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
-                      }`}
-                    >
-                      <Icon
-                        name={isExpense ? "arrow-down-right" : "arrow-up-right"}
-                        className="h-4 w-4"
-                      />
+                    <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-purple-50 text-purple-600">
+                      <Icon name="transfer" className="h-4 w-4" />
                     </span>
                     <div className="space-y-1 text-sm">
-                      <p className="font-semibold text-slate-900">
-                        {isExpense ? "Saída" : "Entrada"}
-                      </p>
+                      <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
                       <p className="text-xs text-slate-500">
-                        {accountNameById.get(item.accountId) ?? "Conta"}
+                        {accountNameById.get(item.fromAccountId) ?? "Conta origem"} →{" "}
+                        {accountNameById.get(item.toAccountId) ?? "Conta destino"}
                       </p>
-                      <p className="text-xs text-slate-500">
-                        {new Date(item.date).toLocaleDateString("pt-BR")}
-                      </p>
-                      {item.note ? (
-                        <p className="text-xs text-slate-500 line-clamp-1">{item.note}</p>
-                      ) : null}
                     </div>
                   </div>
-                  <div
-                    className={`text-right text-sm font-semibold ${
-                      isExpense ? "text-red-500" : "text-emerald-600"
-                    }`}
-                  >
-                    {isExpense ? "-" : "+"}
-                    {formatAmount(item.amount, item.currency)}
+                  <div className="text-right text-sm">
+                    <p className="font-semibold text-slate-900">{formatAmount(item.amountTo, item.currencyTo)}</p>
+                    <p className="text-xs text-slate-500">
+                      {new Date(item.date).toLocaleDateString("pt-BR")}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Saída: {formatAmount(item.amountFrom, item.currencyFrom)}
+                    </p>
                   </div>
                 </div>
               );
-            })
-          )}
+            }
+
+            const isExpense = item.kind === "expense";
+            const title = item.note && item.note.trim().length > 0 ? item.note : isExpense ? "Saída" : "Entrada";
+            return (
+              <div
+                key={item.id}
+                className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-3"
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${
+                      isExpense ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
+                    }`}
+                  >
+                    <Icon
+                      name={isExpense ? "arrow-down-right" : "arrow-up-right"}
+                      className="h-4 w-4"
+                    />
+                  </span>
+                  <div className="space-y-1 text-sm">
+                    <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
+                    <p className="text-xs text-slate-500">
+                      {accountNameById.get(item.accountId) ?? "Conta"}
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className={`text-right text-sm font-semibold ${
+                    isExpense ? "text-red-500" : "text-emerald-600"
+                  }`}
+                >
+                  {isExpense ? "-" : "+"}
+                  {formatAmount(item.amount, item.currency)}
+                  <p className="text-xs font-normal text-slate-500">
+                    {new Date(item.date).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        )}
         </div>
       </div>
     </section>

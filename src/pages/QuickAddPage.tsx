@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { useSession } from "../context/SessionContext";
@@ -70,14 +70,9 @@ const QuickAddPage = () => {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [recentsVersion, setRecentsVersion] = useState(0);
-
-  const displayName = useMemo(() => {
-    return (
-      session?.user.user_metadata?.name ||
-      session?.user.email?.split("@")[0] ||
-      "Você"
-    );
-  }, [session]);
+  const [balance, setBalance] = useState<{ value: number; missingRate: boolean } | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
 
   const handleMenuSelect = async (key: MenuItemKey) => {
     setMenuOpen(false);
@@ -118,15 +113,77 @@ const QuickAddPage = () => {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [menuOpen]);
 
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!organization || !session) return;
+      setBalanceLoading(true);
+      setBalanceError(null);
+      try {
+        const { data, error } = await supabase.functions.invoke<{
+          balance: number;
+          baseCurrency: string;
+          missingRate: boolean;
+        }>("balance", {
+          body: { organizationId: organization.id },
+          headers:
+            session && import.meta.env.VITE_SUPABASE_ANON_KEY
+              ? {
+                  Authorization: `Bearer ${session.access_token}`,
+                  apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+                }
+              : undefined,
+        });
+
+        if (error) throw new Error(error.message);
+        if (!data) return;
+
+        setBalance({ value: data.balance, missingRate: data.missingRate });
+      } catch (err) {
+        setBalanceError(err instanceof Error ? err.message : "Falha ao calcular saldo.");
+      } finally {
+        setBalanceLoading(false);
+      }
+    };
+
+    void fetchBalance();
+  }, [organization, recentsVersion, session]);
+
+  const formatBalance = (value?: number, currency?: string) => {
+    if (typeof value !== "number" || Number.isNaN(value)) return "—";
+    const label = currency ? currency.toUpperCase() : "";
+    return `${value.toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} ${label}`.trim();
+  };
+
   return (
     <main className="page-shell items-start">
       <div className="flex w-full max-w-md flex-col gap-5 pt-1">
         <header className="relative flex items-center justify-between pt-2">
-          <div>
-            <p className="text-xs uppercase tracking-[0.08em] text-slate-500">
-              Olá
-            </p>
-            <p className="text-xl font-semibold text-slate-900">{displayName}</p>
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.08em] text-slate-500">Saldo</p>
+            {balanceLoading || orgLoading ? (
+              <div className="flex items-center gap-2 text-slate-500">
+                <Icon name="loader" className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Calculando...</span>
+              </div>
+            ) : balanceError ? (
+              <p className="text-sm text-red-500">{balanceError}</p>
+            ) : balance ? (
+              <>
+                <p className="text-3xl font-semibold text-slate-900">
+                  {formatBalance(balance.value, organization?.baseCurrency ?? "USD")}
+                </p>
+                {balance.missingRate ? (
+                  <p className="text-xs text-amber-600">
+                    Faltam taxas para converter todas as moedas.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-sm text-slate-500">Nenhum lançamento ainda.</p>
+            )}
           </div>
           <div className="relative flex items-center gap-2">
             <button

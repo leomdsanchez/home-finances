@@ -117,7 +117,8 @@ const callChatVision = async (
           ],
         },
       ],
-      max_tokens: 500,
+      // gpt-5.x models require max_completion_tokens (max_tokens is rejected).
+      max_completion_tokens: 500,
     }),
   });
 

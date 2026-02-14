@@ -6,7 +6,7 @@ import { todayYMD } from "../lib/date";
 type ExpenseTotalRow = {
   category_id: string | null;
   currency: string;
-  total: number;
+  total: number | string | null;
 };
 
 type State = {
@@ -39,10 +39,16 @@ export const useBudgetConsumption = (
       }
       setState((prev) => ({ ...prev, loading: true, error: null }));
       try {
-        const { data, error } = await supabase.rpc<ExpenseTotalRow>(
+        const { data, error } = await supabase.rpc<
           "list_month_expense_totals",
-          { p_org_id: organizationId, p_month: todayYMD() },
-        );
+          {
+            Args: { p_org_id: string; p_month: string };
+            Returns: ExpenseTotalRow[];
+          }
+        >("list_month_expense_totals", {
+          p_org_id: organizationId,
+          p_month: todayYMD(),
+        });
         if (error) throw error;
 
         const totals = new Map<string, number>();

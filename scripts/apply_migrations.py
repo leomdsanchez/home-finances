@@ -62,13 +62,13 @@ def _infer_ref_from_url(url: str) -> str:
 def _list_migration_files(migrations_dir: Path) -> List[Path]:
     files = []
     for p in migrations_dir.glob("*.sql"):
-        if re.match(r"^\\d{14}_.+\\.sql$", p.name):
+        if re.match(r"^\d{14}_.+\.sql$", p.name):
             files.append(p)
     return sorted(files, key=lambda p: p.name)
 
 
 def _parse_version_and_name(path: Path) -> Tuple[str, str]:
-    m = re.match(r"^(\\d{14})_(.+)\\.sql$", path.name)
+    m = re.match(r"^(\d{14})_(.+)\.sql$", path.name)
     if not m:
         raise ValueError(f"Not a migration filename: {path.name}")
     version = m.group(1)
@@ -168,4 +168,3 @@ def main(argv: List[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv))
-

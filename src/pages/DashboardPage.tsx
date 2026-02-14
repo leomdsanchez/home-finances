@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useCurrentOrganization } from "../hooks/useCurrentOrganization";
 import { useAccounts } from "../hooks/useAccounts";
 import { useAccountBalances } from "../hooks/useAccountBalances";
+import { useCategories } from "../hooks/useCategories";
 import { RecentTransactionsCard } from "../components/RecentTransactionsCard";
 import { formatAmount } from "../lib/currency";
 import type { Account } from "../types/domain";
@@ -9,6 +10,7 @@ import type { Account } from "../types/domain";
 const DashboardPage = () => {
   const { organization } = useCurrentOrganization();
   const { accounts, loading: accLoading } = useAccounts(organization?.id);
+  const { categories } = useCategories(organization?.id);
   const { balances, refresh: refreshBalances } = useAccountBalances(organization?.id);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -75,6 +77,7 @@ const DashboardPage = () => {
               <RecentTransactionsCard
                 organizationId={organization?.id}
                 accounts={accounts}
+                categories={categories}
                 accountId={selectedAccountId}
                 refreshKey={refreshKey}
                 onDeleted={handleDeleted}

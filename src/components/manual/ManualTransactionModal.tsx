@@ -177,6 +177,7 @@ export const ManualTransactionModal = ({
   categories,
   loading,
   initialDraft,
+  variant = "wizard",
 }: ManualTransactionModalProps) => {
   const [form, dispatch] = useReducer(formReducer, accounts, (accs) =>
     createInitialState(accs),
@@ -402,6 +403,8 @@ export const ManualTransactionModal = ({
 
   if (!open) return null;
 
+  const showAll = variant === "all";
+
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose();
@@ -414,15 +417,23 @@ export const ManualTransactionModal = ({
       onClick={handleBackdropClick}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+        className={`w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl ${
+          showAll ? "max-h-[85dvh] flex flex-col" : ""
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Lançamento manual</h2>
-            <p className="text-xs text-slate-500">
-              Etapa {STEP_ORDER.indexOf(form.step) + 1} de {STEP_ORDER.length}
-            </p>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {showAll ? "Confirmar lançamento" : "Lançamento manual"}
+            </h2>
+            {showAll ? (
+              <p className="text-xs text-slate-500">Revise tudo antes de salvar.</p>
+            ) : (
+              <p className="text-xs text-slate-500">
+                Etapa {STEP_ORDER.indexOf(form.step) + 1} de {STEP_ORDER.length}
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -443,61 +454,52 @@ export const ManualTransactionModal = ({
         ) : accounts.length === 0 ? (
           <p className="text-sm text-red-500">Cadastre uma conta antes de lançar.</p>
         ) : (
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            {form.step === "type" && (
-              <div className="space-y-4">
-                <ModeToggle
-                  mode={form.mode}
-                  onChange={(mode) => {
-                    dispatch({ type: "setMode", mode });
-                    setError(null);
-                  }}
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <LabeledInput
-                    label="Data"
-                    name="date"
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => updateField("date", e.target.value)}
+          <form
+            className={showAll ? "flex min-h-0 flex-1 flex-col gap-4" : "space-y-4"}
+            onSubmit={handleSubmit}
+          >
+            <div className={showAll ? "space-y-4 overflow-y-auto pr-1 flex-1 min-h-0" : ""}>
+              {showAll || form.step === "type" ? (
+                <div className="space-y-4">
+                  <ModeToggle
+                    mode={form.mode}
+                    onChange={(mode) => {
+                      dispatch({ type: "setMode", mode });
+                      setError(null);
+                    }}
                   />
-                  <div className="space-y-1">
-                    <label className="text-sm text-slate-600">Status</label>
-                    <select
-                      className="input bg-white"
-                      value={form.status}
-                      onChange={(e) => updateField("status", e.target.value)}
-                    >
-                      <option value="realizado">Realizado</option>
-                      <option value="previsto">Previsto</option>
-                    </select>
-                    <p className="text-xs text-slate-500">
-                      Previsto nao entra no saldo e orcamentos.
-                    </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <LabeledInput
+                      label="Data"
+                      name="date"
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => updateField("date", e.target.value)}
+                    />
+                    <div className="space-y-1">
+                      <label className="text-sm text-slate-600">Status</label>
+                      <select
+                        className="input bg-white"
+                        value={form.status}
+                        onChange={(e) => updateField("status", e.target.value)}
+                      >
+                        <option value="realizado">Realizado</option>
+                        <option value="previsto">Previsto</option>
+                      </select>
+                      <p className="text-xs text-slate-500">
+                        Previsto nao entra no saldo e orcamentos.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              ) : null}
 
-            {form.step === "account" && (
-              <div className="space-y-3">
-                <LabeledSelect
-                  label={form.mode === "transfer" ? "Conta de origem" : "Conta"}
-                  value={form.accountId}
-                  onChange={(value) => updateField("accountId", value)}
-                >
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.name} ({acc.currency})
-                    </option>
-                  ))}
-                </LabeledSelect>
-
-                {form.mode === "transfer" && (
+              {showAll || form.step === "account" ? (
+                <div className="space-y-3">
                   <LabeledSelect
-                    label="Conta de destino"
-                    value={form.toAccountId}
-                    onChange={(value) => updateField("toAccountId", value)}
+                    label={form.mode === "transfer" ? "Conta de origem" : "Conta"}
+                    value={form.accountId}
+                    onChange={(value) => updateField("accountId", value)}
                   >
                     {accounts.map((acc) => (
                       <option key={acc.id} value={acc.id}>
@@ -505,115 +507,146 @@ export const ManualTransactionModal = ({
                       </option>
                     ))}
                   </LabeledSelect>
-                )}
-              </div>
-            )}
 
-            {form.step === "amount" && (
-              <div className="space-y-3">
-                <LabeledInput
-                  label={`Valor (${account?.currency ?? "moeda"})`}
-                  name="amount"
-                  placeholder="0,00"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  autoFocus
-                  value={form.amount}
-                  onChange={(e) => {
-                    const formatted = formatAmount(e.target.value, decimals);
-                    updateField("amount", formatted);
-                  }}
-                  helperText={
-                    decimals === 0
-                      ? "Sem centavos para pesos; digite só números."
-                      : "Digite o valor seguido dos centavos, sem precisar usar vírgula."
-                  }
-                />
-                {form.mode === "transfer" && (
-                  <>
-                    <LabeledInput
-                      label={`Taxa ${account?.currency ?? ""} → ${toAccount?.currency ?? ""}`}
-                      name="exchangeRate"
-                      type="number"
-                      step="0.0001"
-                      value={form.exchangeRate}
-                      onChange={(e) => updateField("exchangeRate", e.target.value)}
-                      helperText={
-                        defaultExchangeRate
-                          ? `Padrão: ${defaultExchangeRate} ${account?.currency} = 1 ${toAccount?.currency}`
-                          : "Quantos da moeda de origem valem 1 da moeda destino."
-                      }
-                    />
-                    {convertedAmount !== null ? (
-                      <p className="text-xs text-slate-500">
-                        ≈ {convertedAmount.toFixed(toDecimals)} {toAccount?.currency}
-                      </p>
-                    ) : null}
-                  </>
-                )}
-              </div>
-            )}
+                  {form.mode === "transfer" ? (
+                    <LabeledSelect
+                      label="Conta de destino"
+                      value={form.toAccountId}
+                      onChange={(value) => updateField("toAccountId", value)}
+                    >
+                      {accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name} ({acc.currency})
+                        </option>
+                      ))}
+                    </LabeledSelect>
+                  ) : null}
+                </div>
+              ) : null}
 
-            {form.step === "details" && (
-              <div className="space-y-3">
-                <LabeledInput
-                  label="Nota"
-                  name="note"
-                  placeholder="Descrição rápida"
-                  autoComplete="off"
-                  value={form.note}
-                  onChange={(e) => updateField("note", e.target.value)}
-                />
-                {form.mode !== "transfer" ? (
-                  <LabeledSelect
-                    label="Categoria (opcional)"
-                    value={form.categoryId ?? ""}
-                    onChange={(value) => updateField("categoryId", value || null)}
-                  >
-                    <option value="">Sem categoria</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </LabeledSelect>
-                ) : (
-                  <p className="text-xs text-slate-500">Transferências não usam categoria.</p>
-                )}
-              </div>
-            )}
+              {showAll || form.step === "amount" ? (
+                <div className="space-y-3">
+                  <LabeledInput
+                    label={`Valor (${account?.currency ?? "moeda"})`}
+                    name="amount"
+                    placeholder="0,00"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    autoFocus={!showAll}
+                    value={form.amount}
+                    onChange={(e) => {
+                      const formatted = formatAmount(e.target.value, decimals);
+                      updateField("amount", formatted);
+                    }}
+                    helperText={
+                      decimals === 0
+                        ? "Sem centavos para pesos; digite só números."
+                        : "Digite o valor seguido dos centavos, sem precisar usar vírgula."
+                    }
+                  />
+                  {form.mode === "transfer" ? (
+                    <>
+                      <LabeledInput
+                        label={`Taxa ${account?.currency ?? ""} → ${toAccount?.currency ?? ""}`}
+                        name="exchangeRate"
+                        type="number"
+                        step="0.0001"
+                        value={form.exchangeRate}
+                        onChange={(e) => updateField("exchangeRate", e.target.value)}
+                        helperText={
+                          defaultExchangeRate
+                            ? `Padrão: ${defaultExchangeRate} ${account?.currency} = 1 ${toAccount?.currency}`
+                            : "Quantos da moeda de origem valem 1 da moeda destino."
+                        }
+                      />
+                      {convertedAmount !== null ? (
+                        <p className="text-xs text-slate-500">
+                          ≈ {convertedAmount.toFixed(toDecimals)} {toAccount?.currency}
+                        </p>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+              {showAll || form.step === "details" ? (
+                <div className="space-y-3">
+                  <LabeledInput
+                    label="Nota"
+                    name="note"
+                    placeholder="Descrição rápida"
+                    autoComplete="off"
+                    value={form.note}
+                    onChange={(e) => updateField("note", e.target.value)}
+                  />
+                  {form.mode !== "transfer" ? (
+                    <LabeledSelect
+                      label="Categoria (opcional)"
+                      value={form.categoryId ?? ""}
+                      onChange={(value) => updateField("categoryId", value || null)}
+                    >
+                      <option value="">Sem categoria</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </LabeledSelect>
+                  ) : (
+                    <p className="text-xs text-slate-500">Transferências não usam categoria.</p>
+                  )}
+                </div>
+              ) : null}
+            </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <Button
-                variant="ghost"
-                className="w-auto flex-1"
-                onClick={goToPrev}
-                disabled={form.step === "type" || saving}
-              >
-                <Icon name="arrow-left" className="h-4 w-4" />
-              </Button>
+            {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
-              {form.step === "details" ? (
-                <Button type="submit" disabled={!canSubmit || saving} className="w-auto flex-1">
+            {showAll ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  type="button"
+                  className="flex-1"
+                  onClick={onClose}
+                  disabled={saving}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={!canSubmit || saving} className="flex-1">
                   {saving ? "Salvando..." : "Salvar"}
                 </Button>
-              ) : (
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
                 <Button
                   variant="ghost"
                   className="w-auto flex-1"
-                  type="button"
-                  onClick={() => {
-                    const msg = validateStep(form.step);
-                    if (msg) return setError(msg);
-                    goToNext();
-                  }}
+                  onClick={goToPrev}
+                  disabled={form.step === "type" || saving}
                 >
-                  <Icon name="arrow-right" className="h-4 w-4" />
+                  <Icon name="arrow-left" className="h-4 w-4" />
                 </Button>
-              )}
-            </div>
+
+                {form.step === "details" ? (
+                  <Button type="submit" disabled={!canSubmit || saving} className="w-auto flex-1">
+                    {saving ? "Salvando..." : "Salvar"}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="w-auto flex-1"
+                    type="button"
+                    onClick={() => {
+                      const msg = validateStep(form.step);
+                      if (msg) return setError(msg);
+                      goToNext();
+                    }}
+                  >
+                    <Icon name="arrow-right" className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            )}
           </form>
         )}
       </div>

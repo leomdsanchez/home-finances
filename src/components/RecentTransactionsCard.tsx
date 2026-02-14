@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import supabase from "../lib/supabaseClient";
-import type { Account, Transaction } from "../types/domain";
+import type { Account, Category, Transaction } from "../types/domain";
 import { Icon } from "./Icon";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { deleteTransaction, deleteTransfer } from "../services/transactionService";
+import { Button } from "./Button";
+import { Input } from "./Input";
+import {
+  deleteTransaction,
+  deleteTransfer,
+  updateTransaction,
+  updateTransferStatus,
+} from "../services/transactionService";
 import { formatAmount } from "../lib/currency";
 import { formatYMDToPtBR } from "../lib/date";
 
@@ -25,6 +32,7 @@ type SingleItem = {
   kind: "expense" | "income";
   id: string;
   status: Transaction["status"];
+  categoryId: string | null;
   amount: number;
   currency: string;
   accountId: string;
@@ -38,9 +46,26 @@ type DeleteTarget =
   | { kind: "transaction"; id: string; label: string }
   | { kind: "transfer"; id: string; label: string };
 
+type EditState = {
+  transactionId: string;
+  currency: string;
+  amount: string;
+  note: string;
+  date: string;
+  categoryId: string | null;
+  status: Transaction["status"];
+};
+
+type TransferEditState = {
+  transferId: string;
+  title: string;
+  status: Transaction["status"];
+};
+
 type Props = {
   organizationId?: string;
   accounts: Account[];
+  categories: Category[];
   limit?: number;
   refreshKey?: number;
   fill?: boolean;
@@ -52,6 +77,7 @@ type Props = {
 export const RecentTransactionsCard = ({
   organizationId,
   accounts,
+  categories,
   limit = 30,
   refreshKey = 0,
   fill = false,
@@ -64,6 +90,12 @@ export const RecentTransactionsCard = ({
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState<EditState | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editingTransfer, setEditingTransfer] = useState<TransferEditState | null>(null);
+  const [transferSaving, setTransferSaving] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
   const [internalRefresh, setInternalRefresh] = useState(0);
   const [openActionsKey, setOpenActionsKey] = useState<string | null>(null);
   const actionsRef = useRef<HTMLDivElement | null>(null);
@@ -73,6 +105,12 @@ export const RecentTransactionsCard = ({
     accounts.forEach((acc) => map.set(acc.id, `${acc.name} (${acc.currency})`));
     return map;
   }, [accounts]);
+
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    categories.forEach((cat) => map.set(cat.id, cat.name));
+    return map;
+  }, [categories]);
 
   useEffect(() => {
     const fetchRecents = async () => {
@@ -135,6 +173,7 @@ export const RecentTransactionsCard = ({
             kind: tx.type,
             id: tx.id,
             status: tx.status,
+            categoryId: tx.categoryId ?? null,
             amount: tx.amount,
             currency: tx.currency,
             accountId: tx.accountId,
@@ -166,6 +205,7 @@ export const RecentTransactionsCard = ({
                 kind: leg.type,
                 id: leg.id,
                 status: leg.status,
+                categoryId: leg.categoryId ?? null,
                 amount: leg.amount,
                 currency: leg.currency,
                 accountId: leg.accountId,
@@ -214,6 +254,72 @@ export const RecentTransactionsCard = ({
       setError(err instanceof Error ? err.message : "Falha ao remover.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleStartEdit = (item: SingleItem) => {
+    setEditError(null);
+    setEditing({
+      transactionId: item.id,
+      currency: item.currency,
+      amount: String(item.amount ?? ""),
+      note: item.note ?? "",
+      date: item.date,
+      categoryId: item.categoryId ?? null,
+      status: item.status,
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editing || !organizationId) return;
+
+    const parsedAmount = Number(editing.amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setEditError("Informe um valor válido.");
+      return;
+    }
+
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      await updateTransaction(supabase, {
+        organizationId,
+        transactionId: editing.transactionId,
+        amount: parsedAmount,
+        note: editing.note || null,
+        date: editing.date,
+        categoryId: editing.categoryId,
+        status: editing.status,
+      });
+      setEditing(null);
+      setInternalRefresh((v) => v + 1);
+      // This also refreshes balances/budgets in the parent.
+      onDeleted?.();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Falha ao salvar.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleSaveTransferEdit = async () => {
+    if (!editingTransfer || !organizationId) return;
+    setTransferSaving(true);
+    setTransferError(null);
+    try {
+      await updateTransferStatus(supabase, {
+        organizationId,
+        transferId: editingTransfer.transferId,
+        status: editingTransfer.status,
+      });
+      setEditingTransfer(null);
+      setInternalRefresh((v) => v + 1);
+      // This also refreshes balances/budgets in the parent.
+      onDeleted?.();
+    } catch (err) {
+      setTransferError(err instanceof Error ? err.message : "Falha ao salvar.");
+    } finally {
+      setTransferSaving(false);
     }
   };
 
@@ -309,6 +415,21 @@ export const RecentTransactionsCard = ({
                             type="button"
                             onClick={() => {
                               setOpenActionsKey(null);
+                              setEditingTransfer({
+                                transferId: item.id,
+                                title,
+                                status: item.status,
+                              });
+                            }}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-800 transition hover:bg-slate-50"
+                          >
+                            <Icon name="edit" className="h-4 w-4 text-slate-500" />
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenActionsKey(null);
                               setDeleteTarget({ kind: "transfer", id: item.id, label: title });
                             }}
                             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 transition hover:bg-red-50"
@@ -327,6 +448,7 @@ export const RecentTransactionsCard = ({
             const isExpense = item.kind === "expense";
             const title = item.note && item.note.trim().length > 0 ? item.note : isExpense ? "Saída" : "Entrada";
             const key = `tx:${item.id}`;
+            const categoryName = item.categoryId ? categoryNameById.get(item.categoryId) : null;
             return (
               <div
                 key={item.id}
@@ -350,6 +472,7 @@ export const RecentTransactionsCard = ({
                     </div>
                     <p className="text-xs text-slate-500">
                       {accountNameById.get(item.accountId) ?? "Conta"}
+                      {categoryName ? ` · ${categoryName}` : ""}
                     </p>
                   </div>
                 </div>
@@ -379,6 +502,17 @@ export const RecentTransactionsCard = ({
                           type="button"
                           onClick={() => {
                             setOpenActionsKey(null);
+                            handleStartEdit(item);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-800 transition hover:bg-slate-50"
+                        >
+                          <Icon name="edit" className="h-4 w-4 text-slate-500" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenActionsKey(null);
                             setDeleteTarget({ kind: "transaction", id: item.id, label: title });
                           }}
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 transition hover:bg-red-50"
@@ -396,6 +530,190 @@ export const RecentTransactionsCard = ({
         )}
         </div>
       </div>
+
+      {/* Edit modal */}
+      {editing ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6"
+          onClick={() => setEditing(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Editar transação</h2>
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                aria-label="Fechar"
+              >
+                <Icon name="close" className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-sm text-slate-600">
+                  Valor{" "}
+                  <span className="text-xs text-slate-400">
+                    ({editing.currency?.toUpperCase?.() ?? editing.currency})
+                  </span>
+                </label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  value={editing.amount}
+                  onChange={(e) => setEditing({ ...editing, amount: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm text-slate-600">Status</label>
+                <select
+                  className="input bg-white"
+                  value={editing.status}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      status: e.target.value as Transaction["status"],
+                    })
+                  }
+                >
+                  <option value="realizado">Realizado</option>
+                  <option value="previsto">Previsto</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm text-slate-600">Nota</label>
+                <Input
+                  value={editing.note}
+                  onChange={(e) => setEditing({ ...editing, note: e.target.value })}
+                  placeholder="Descrição"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm text-slate-600">Data</label>
+                <Input
+                  type="date"
+                  value={editing.date}
+                  onChange={(e) => setEditing({ ...editing, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm text-slate-600">Categoria</label>
+                <select
+                  className="input bg-white"
+                  value={editing.categoryId ?? ""}
+                  onChange={(e) =>
+                    setEditing({ ...editing, categoryId: e.target.value || null })
+                  }
+                >
+                  <option value="">Sem categoria</option>
+                  {categories.map((cat: Category) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {editError ? <p className="text-sm text-red-500">{editError}</p> : null}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setEditing(null)}
+                  className="flex-1"
+                  disabled={editSaving}
+                >
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveEdit} disabled={editSaving} className="flex-1">
+                  {editSaving ? (
+                    <>
+                      <Icon name="loader" className="h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Salvar"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Transfer edit modal */}
+      {editingTransfer ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6"
+          onClick={() => setEditingTransfer(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-slate-900">Editar transferência</h2>
+                <p className="text-xs text-slate-500 line-clamp-1">{editingTransfer.title}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTransfer(null)}
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                aria-label="Fechar"
+              >
+                <Icon name="close" className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-sm text-slate-600">Status</label>
+                <select
+                  className="input bg-white"
+                  value={editingTransfer.status}
+                  onChange={(e) =>
+                    setEditingTransfer({
+                      ...editingTransfer,
+                      status: e.target.value as Transaction["status"],
+                    })
+                  }
+                >
+                  <option value="realizado">Realizado</option>
+                  <option value="previsto">Previsto</option>
+                </select>
+              </div>
+              {transferError ? <p className="text-sm text-red-500">{transferError}</p> : null}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setEditingTransfer(null)}
+                  className="flex-1"
+                  disabled={transferSaving}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSaveTransferEdit}
+                  className="flex-1"
+                  disabled={transferSaving}
+                >
+                  {transferSaving ? (
+                    <>
+                      <Icon name="loader" className="h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Salvar"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <ConfirmDialog
         open={!!deleteTarget}

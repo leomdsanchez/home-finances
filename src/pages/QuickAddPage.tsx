@@ -63,6 +63,7 @@ const QuickAddPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [showManualModal, setShowManualModal] = useState(false);
+  const [manualVariant, setManualVariant] = useState<"wizard" | "all">("wizard");
   const [manualInitialDraft, setManualInitialDraft] = useState<ManualTransactionDraft | undefined>(
     undefined,
   );
@@ -108,6 +109,7 @@ const QuickAddPage = () => {
   const handleAction = (key: QuickAction["key"]) => {
     if (key === "manual") {
       setManualInitialDraft(undefined);
+      setManualVariant("wizard");
       setShowManualModal(true);
       setFabOpen(false);
       return;
@@ -361,6 +363,7 @@ const QuickAddPage = () => {
         : "details";
 
     setManualInitialDraft({ ...draft, step });
+    setManualVariant("all");
     setShowManualModal(true);
   };
 
@@ -460,6 +463,7 @@ const QuickAddPage = () => {
               <RecentTransactionsCard
                 organizationId={organization?.id}
                 accounts={accounts}
+                categories={categories}
                 refreshKey={recentsVersion}
                 onDeleted={() => setRecentsVersion((v) => v + 1)}
                 fill
@@ -593,6 +597,7 @@ const QuickAddPage = () => {
           onClose={() => {
             setShowManualModal(false);
             setManualInitialDraft(undefined);
+            setManualVariant("wizard");
           }}
           onSaved={() => setRecentsVersion((v) => v + 1)}
           organization={organization}
@@ -600,6 +605,7 @@ const QuickAddPage = () => {
           categories={categories}
           loading={orgLoading || accLoading || catLoading}
           initialDraft={manualInitialDraft}
+          variant={manualVariant}
         />
         <AIMicModal
           open={showMicModal}

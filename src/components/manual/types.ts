@@ -22,4 +22,5 @@ export type ManualTransactionModalProps = {
   categories: Category[];
   loading?: boolean;
   initialDraft?: ManualTransactionDraft;
+  variant?: "wizard" | "all";
 };

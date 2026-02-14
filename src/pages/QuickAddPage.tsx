@@ -512,17 +512,18 @@ const QuickAddPage = () => {
         </div>
 
       {/* FAB */}
-      <div className="fixed bottom-6 right-6 z-30 flex flex-col items-end gap-3">
-        {favoriteNotice ? (
-          <div className="rounded-full bg-slate-900/90 px-3 py-2 text-xs font-medium text-white shadow-lg">
-            {favoriteNotice}
-          </div>
-        ) : null}
-        <div
-          className={`flex flex-col items-end gap-3 transition-all duration-200 ${
-            fabOpen ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 translate-y-2"
-          }`}
-        >
+      <div className="fixed bottom-6 right-6 z-30">
+        <div className="relative flex flex-col items-end">
+          {favoriteNotice ? (
+            <div className="pointer-events-none mb-3 rounded-full bg-slate-900/90 px-3 py-2 text-xs font-medium text-white shadow-lg">
+              {favoriteNotice}
+            </div>
+          ) : null}
+          <div
+            className={`absolute bottom-[4.25rem] right-0 flex flex-col items-end gap-3 transition-all duration-200 ${
+              fabOpen ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 translate-y-2"
+            }`}
+          >
           <button
             type="button"
             onMouseDown={() => startActionHold("manual")}
@@ -628,6 +629,7 @@ const QuickAddPage = () => {
         >
           <Icon name="plus" className="h-6 w-6 transition" />
         </button>
+        </div>
       </div>
 
         <ManualTransactionModal

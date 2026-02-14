@@ -10,9 +10,7 @@ import { useCategories } from "../hooks/useCategories";
 import { useBudgets } from "../hooks/useBudgets";
 import { ManualTransactionModal } from "../components/manual";
 import { RecentTransactionsCard } from "../components/RecentTransactionsCard";
-import { BudgetCarousel } from "../components/BudgetCarousel";
-import { BudgetModal } from "../components/BudgetModal";
-import type { Budget } from "../types/domain";
+import { BudgetSummaryCard } from "../components/BudgetSummaryCard";
 
 type QuickAction = {
   key: "manual" | "camera" | "mic";
@@ -55,14 +53,11 @@ const QuickAddPage = () => {
     budgets,
     loading: budgetLoading,
     error: budgetError,
-    editBudget,
   } = useBudgets(organization?.id);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
-  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
-  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const holdTimer = useRef<number | null>(null);
   const [recentsVersion, setRecentsVersion] = useState(0);
   const [balance, setBalance] = useState<{ value: number; missingRate: boolean } | null>(null);
@@ -182,27 +177,6 @@ const QuickAddPage = () => {
     [],
   );
 
-  const handleEditBudget = (budget: Budget) => {
-    setEditingBudget(budget);
-    setBudgetModalOpen(true);
-  };
-
-  const handleSaveBudget = async (params: {
-    budgetId?: string;
-    categoryId: string | null;
-    amount: number;
-    currency: string;
-  }) => {
-    if (!params.budgetId) return;
-    await editBudget(params.budgetId, {
-      categoryId: params.categoryId,
-      amount: params.amount,
-      currency: params.currency,
-    });
-    setBudgetModalOpen(false);
-    setEditingBudget(null);
-  };
-
   return (
     <main className="page-shell items-start h-[100dvh] min-h-[100dvh] overflow-hidden">
       <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col gap-4 pt-1 pb-8 min-h-0">
@@ -283,18 +257,15 @@ const QuickAddPage = () => {
           </div>
         </header>
 
-        <div className="relative flex-1 min-h-0 overflow-hidden">
+          <div className="relative flex-1 min-h-0 overflow-hidden">
           <div className="flex h-full flex-col gap-4 px-0">
-            <div className="h-64 shrink-0 overflow-hidden">
-              <BudgetCarousel
+            <div className="shrink-0">
+              <BudgetSummaryCard
                 organizationId={organization?.id}
                 budgets={budgets}
-                categories={categories}
                 loading={budgetLoading || orgLoading || catLoading}
                 error={budgetError}
                 refreshKey={recentsVersion}
-                className="h-full"
-                onEdit={handleEditBudget}
                 onOpenBudgets={() => navigate("/orcamentos")}
               />
             </div>
@@ -371,19 +342,6 @@ const QuickAddPage = () => {
           accounts={accounts}
           categories={categories}
           loading={orgLoading || accLoading || catLoading}
-        />
-        <BudgetModal
-          open={budgetModalOpen}
-          onClose={() => {
-            setBudgetModalOpen(false);
-            setEditingBudget(null);
-          }}
-          categories={categories}
-          organization={organization}
-          initialBudget={editingBudget}
-          onSubmit={handleSaveBudget}
-          loading={budgetLoading}
-          error={budgetError ?? undefined}
         />
       </div>
     </main>

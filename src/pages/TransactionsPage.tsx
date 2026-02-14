@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
@@ -15,6 +15,7 @@ import { formatYMDToPtBR } from "../lib/date";
 
 type EditState = {
   transaction: Transaction;
+  amount: string;
   note: string;
   date: string;
   categoryId: string | null;
@@ -60,6 +61,8 @@ const TransactionsPage = () => {
   const [transferError, setTransferError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [openActionsKey, setOpenActionsKey] = useState<string | null>(null);
+  const actionsRef = useRef<HTMLDivElement | null>(null);
 
   const accountNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -89,6 +92,7 @@ const TransactionsPage = () => {
   const handleStartEdit = (tx: Transaction) => {
     setEditing({
       transaction: tx,
+      amount: String(tx.amount ?? ""),
       note: tx.note ?? "",
       date: tx.date,
       categoryId: tx.categoryId,
@@ -102,7 +106,13 @@ const TransactionsPage = () => {
     setEditSaving(true);
     setEditError(null);
     try {
+      const parsedAmount = Number(editing.amount);
+      if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        setEditError("Valor inválido.");
+        return;
+      }
       await editTransaction(editing.transaction.id, {
+        amount: parsedAmount,
         note: editing.note || null,
         date: editing.date,
         categoryId: editing.categoryId,
@@ -146,6 +156,16 @@ const TransactionsPage = () => {
       setDeleting(false);
     }
   };
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (openActionsKey && actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
+        setOpenActionsKey(null);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [openActionsKey]);
 
   // Group transfers
   type DisplayItem =
@@ -371,6 +391,7 @@ const TransactionsPage = () => {
                   if (item.kind === "transfer") {
                     const title =
                       item.from.note?.trim() || item.to.note?.trim() || "Transferência";
+                    const key = `transfer:${item.transferId}`;
                     return (
                       <div
                         key={item.transferId}
@@ -413,36 +434,55 @@ const TransactionsPage = () => {
                               {formatAmount(item.from.amount, item.from.currency)}
                             </p>
                           </div>
-                          <div className="flex flex-col gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingTransfer({
-                                  transferId: item.transferId,
-                                  title,
-                                  status: item.from.status,
-                                });
-                                setTransferError(null);
-                              }}
-                              className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
-                              aria-label="Editar transferência"
-                            >
-                              <Icon name="edit" className="h-3.5 w-3.5" />
-                            </button>
+                          <div
+                            className="relative"
+                            ref={openActionsKey === key ? actionsRef : undefined}
+                          >
                             <button
                               type="button"
                               onClick={() =>
-                                setDeleteTarget({
-                                  kind: "transfer",
-                                  id: item.transferId,
-                                  label: title,
-                                })
+                                setOpenActionsKey((prev) => (prev === key ? null : key))
                               }
-                              className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
-                              aria-label="Remover transferência"
+                              className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                              aria-label="Mais ações"
                             >
-                              <Icon name="trash" className="h-3.5 w-3.5" />
+                              <Icon name="more" className="h-4 w-4" />
                             </button>
+                            {openActionsKey === key ? (
+                              <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/80 z-10">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenActionsKey(null);
+                                    setEditingTransfer({
+                                      transferId: item.transferId,
+                                      title,
+                                      status: item.from.status,
+                                    });
+                                    setTransferError(null);
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-800 transition hover:bg-slate-50"
+                                >
+                                  <Icon name="edit" className="h-4 w-4 text-slate-500" />
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenActionsKey(null);
+                                    setDeleteTarget({
+                                      kind: "transfer",
+                                      id: item.transferId,
+                                      label: title,
+                                    });
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 transition hover:bg-red-50"
+                                >
+                                  <Icon name="trash" className="h-4 w-4" />
+                                  Remover
+                                </button>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -455,6 +495,7 @@ const TransactionsPage = () => {
                   const categoryName = tx.categoryId
                     ? categoryNameById.get(tx.categoryId)
                     : null;
+                  const key = `tx:${tx.id}`;
 
                   return (
                     <div
@@ -491,29 +532,50 @@ const TransactionsPage = () => {
                             {formatYMDToPtBR(tx.date)}
                           </p>
                         </div>
-                        <div className="flex flex-col gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleStartEdit(tx)}
-                            className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
-                            aria-label="Editar transação"
-                          >
-                            <Icon name="edit" className="h-3.5 w-3.5" />
-                          </button>
+                        <div
+                          className="relative"
+                          ref={openActionsKey === key ? actionsRef : undefined}
+                        >
                           <button
                             type="button"
                             onClick={() =>
-                              setDeleteTarget({
-                                kind: "transaction",
-                                id: tx.id,
-                                label: title,
-                              })
+                              setOpenActionsKey((prev) => (prev === key ? null : key))
                             }
-                            className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
-                            aria-label="Remover transação"
+                            className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                            aria-label="Mais ações"
                           >
-                            <Icon name="trash" className="h-3.5 w-3.5" />
+                            <Icon name="more" className="h-4 w-4" />
                           </button>
+                          {openActionsKey === key ? (
+                            <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/80 z-10">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionsKey(null);
+                                  handleStartEdit(tx);
+                                }}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-800 transition hover:bg-slate-50"
+                              >
+                                <Icon name="edit" className="h-4 w-4 text-slate-500" />
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionsKey(null);
+                                  setDeleteTarget({
+                                    kind: "transaction",
+                                    id: tx.id,
+                                    label: title,
+                                  });
+                                }}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 transition hover:bg-red-50"
+                              >
+                                <Icon name="trash" className="h-4 w-4" />
+                                Remover
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -566,6 +628,22 @@ const TransactionsPage = () => {
               </button>
             </div>
             <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-sm text-slate-600">
+                  Valor{" "}
+                  <span className="text-xs text-slate-400">
+                    ({editing.transaction.currency?.toUpperCase?.() ?? editing.transaction.currency})
+                  </span>
+                </label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  value={editing.amount}
+                  onChange={(e) => setEditing({ ...editing, amount: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
               <div className="space-y-1">
                 <label className="text-sm text-slate-600">Status</label>
                 <select

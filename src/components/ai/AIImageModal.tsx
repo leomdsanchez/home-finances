@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Account, Category } from "../../types/domain";
 import { Button } from "../Button";
 import { Icon } from "../Icon";
-import { Input } from "../Input";
 import { todayYMD } from "../../lib/date";
 import {
   suggestTransactionFromImage,
@@ -31,6 +30,8 @@ export const AIImageModal = ({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const previewUrl = useMemo(
     () => (imageFile ? URL.createObjectURL(imageFile) : null),
@@ -50,9 +51,12 @@ export const AIImageModal = ({
     };
   }, [previewUrl]);
 
-  const handleSend = async () => {
+  const canUse = Boolean(organizationId && token && accounts.length > 0);
+
+  const handleSend = async (file?: File) => {
     if (!organizationId || !token) return;
-    if (!imageFile) {
+    const f = file ?? imageFile;
+    if (!f) {
       setError("Selecione uma imagem primeiro.");
       return;
     }
@@ -65,8 +69,8 @@ export const AIImageModal = ({
         today: todayYMD(),
         accounts,
         categories,
-        image: imageFile,
-        filename: imageFile.name || "image.jpg",
+        image: f,
+        filename: f.name || "image.jpg",
       });
       onSuggested(result);
       onClose();
@@ -78,8 +82,6 @@ export const AIImageModal = ({
   };
 
   if (!open) return null;
-
-  const canUse = Boolean(organizationId && token && accounts.length > 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6" onClick={onClose}>
@@ -102,15 +104,58 @@ export const AIImageModal = ({
         </div>
 
         <div className="space-y-3">
-          <Input
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={!canUse || sending}
+              className="flex-1"
+            >
+              <Icon name="camera" className="h-4 w-4" />
+              Câmera
+            </Button>
+            <Button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!canUse || sending}
+              className="flex-1"
+            >
+              <Icon name="file-image" className="h-4 w-4" />
+              Arquivo
+            </Button>
+          </div>
+
+          <input
+            ref={cameraInputRef}
             type="file"
             accept="image/*"
             capture="environment"
+            className="sr-only"
             onChange={(e) => {
               setError(null);
-              const f = e.target.files?.[0];
+              const target = e.target as HTMLInputElement;
+              const f = target.files?.[0];
+              // Allow selecting the same file again after an error.
+              target.value = "";
               if (!f) return;
               setImageFile(f);
+              void handleSend(f);
+            }}
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(e) => {
+              setError(null);
+              const target = e.target as HTMLInputElement;
+              const f = target.files?.[0];
+              // Allow selecting the same file again after an error.
+              target.value = "";
+              if (!f) return;
+              setImageFile(f);
+              void handleSend(f);
             }}
           />
 
@@ -126,19 +171,22 @@ export const AIImageModal = ({
 
           {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
-          <Button onClick={handleSend} disabled={!canUse || sending} className="w-full">
-            {sending ? (
-              <>
-                <Icon name="loader" className="h-4 w-4 animate-spin" />
-                Processando...
-              </>
-            ) : (
-              <>
-                <Icon name="check" className="h-4 w-4" />
-                Gerar lançamento
-              </>
-            )}
-          </Button>
+          {sending ? (
+            <div className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white">
+              <Icon name="loader" className="h-4 w-4 animate-spin" />
+              Analisando imagem...
+            </div>
+          ) : imageFile ? (
+            <Button
+              type="button"
+              onClick={() => void handleSend(imageFile)}
+              disabled={!canUse}
+              className="w-full"
+            >
+              <Icon name="check" className="h-4 w-4" />
+              Analisar novamente
+            </Button>
+          ) : null}
 
           {!canUse ? (
             <p className="text-xs text-slate-500">

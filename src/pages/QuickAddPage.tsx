@@ -260,7 +260,9 @@ const QuickAddPage = () => {
     plusHoldFired.current = false;
     holdTimer.current = window.setTimeout(() => {
       plusHoldFired.current = true;
-      setFabOpen(true);
+      setFabOpen(false);
+      const preferred = favoriteActionRef.current ?? "manual";
+      handleAction(preferred);
     }, 420);
   };
 
@@ -574,20 +576,15 @@ const QuickAddPage = () => {
           onTouchCancel={endHold}
           onClick={() => {
             if (Date.now() < suppressPlusClickUntil.current) return;
-            if (fabOpen) {
-              setFabOpen(false);
-              return;
-            }
-            const preferred = favoriteAction ?? "manual";
-            handleAction(preferred);
+            setFabOpen((v) => !v);
           }}
           className={`flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-700 active:bg-blue-800 ${
             fabOpen ? "rotate-45" : ""
           }`}
-          aria-label="Adicionar lançamento (toque para abrir favorito; segure para abrir menu)"
-          title="Toque: favorito | Segure: menu"
+          aria-label="Adicionar lançamento (toque para abrir opções; segure para abrir favorito)"
+          title="Toque: opções | Segure: favorito"
         >
-          <Icon name={fabOpen ? "close" : "plus"} className="h-6 w-6 transition" />
+          <Icon name="plus" className="h-6 w-6 transition" />
         </button>
       </div>
 

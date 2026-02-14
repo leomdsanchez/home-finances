@@ -42,19 +42,29 @@ const invokeAiFunction = async (
   token: string,
   body: FormData,
 ) => {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      apikey: SUPABASE_ANON_KEY,
-    },
-    body,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body,
+    });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Falha ao chamar a Edge Function (${name}). Verifique se ela está deployada e se há conexão. (${detail})`,
+    );
+  }
 
   const payload = await parseJson(res);
   if (!res.ok) {
     const message =
-      payload?.error || payload?.message || `Failed to invoke ${name}`;
+      payload?.error ||
+      payload?.message ||
+      `Falha ao executar ${name} (HTTP ${res.status}).`;
     throw new Error(message);
   }
   return payload;
@@ -92,4 +102,3 @@ export const suggestTransactionFromImage = async (
     suggestion: payload?.suggestion as AiTransactionSuggestion,
   };
 };
-

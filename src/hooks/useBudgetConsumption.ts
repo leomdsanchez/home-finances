@@ -75,7 +75,6 @@ export const useBudgetConsumption = (
     };
 
     void fetchTotals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, budgets.length, monthKey, refreshKey]);
 
   const spentByBudget = useMemo(() => {

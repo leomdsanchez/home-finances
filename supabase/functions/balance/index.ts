@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4?dts";
 
@@ -13,46 +12,6 @@ const jsonResponse = (status: number, body: Record<string, unknown>) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-
-type ExchangeDefault = {
-  fromCurrency: string;
-  toCurrency: string;
-  rate: number;
-};
-
-type TotalsRow = {
-  currency: string;
-  type: "income" | "expense";
-  sum: number;
-};
-
-type AccountSummary = {
-  accountId: string;
-  accountName: string | null;
-  currency: string;
-  income: number;
-  expense: number;
-  balance: number;
-  balanceInBase: number;
-};
-
-const findRateToBase = (
-  baseCurrency: string,
-  currency: string,
-  rates: ExchangeDefault[],
-): { rate: number | null; inverted: boolean } => {
-  const direct = rates.find(
-    (r) => r.fromCurrency === baseCurrency && r.toCurrency === currency,
-  );
-  if (direct) return { rate: direct.rate, inverted: false };
-
-  const inverse = rates.find(
-    (r) => r.fromCurrency === currency && r.toCurrency === baseCurrency,
-  );
-  if (inverse && inverse.rate) return { rate: 1 / inverse.rate, inverted: true };
-
-  return { rate: null, inverted: false };
-};
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {

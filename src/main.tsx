@@ -6,19 +6,22 @@ import { RouterProvider } from "react-router-dom";
 import { registerSW } from "virtual:pwa-register";
 
 if (import.meta.env.PROD) {
-  // Force-refresh strategy to avoid mobile/PWA devices getting stuck on older bundles.
-  let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
-  updateSW = registerSW({
+  // More aggressive update strategy to avoid mobile/PWA devices getting stuck on older bundles.
+  registerSW({
     immediate: true,
-    onNeedRefresh() {
-      void updateSW?.(true);
-    },
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;
-      // Periodically check for new deployments.
+      // Check for new deployments periodically and when the app regains focus/visibility.
+      void registration.update();
       setInterval(() => {
         void registration.update();
-      }, 60 * 60 * 1000);
+      }, 30 * 60 * 1000);
+
+      const onFocus = () => void registration.update();
+      window.addEventListener("focus", onFocus);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") onFocus();
+      });
     },
   });
 }

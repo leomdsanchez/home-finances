@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Account, Category } from "../../types/domain";
 import { Button } from "../Button";
 import { Icon } from "../Icon";
@@ -21,6 +21,44 @@ type Props = {
   }) => void;
 };
 
+const pickRecorderMimeType = () => {
+  if (typeof window === "undefined" || typeof MediaRecorder === "undefined") return null;
+  // Try a few common types (not all browsers support all).
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/ogg",
+    "audio/mp4",
+  ];
+  return candidates.find((t) => MediaRecorder.isTypeSupported?.(t)) ?? null;
+};
+
+const audioFilenameForMime = (mime: string | undefined | null) => {
+  const m = (mime ?? "").toLowerCase();
+  if (m.includes("mp4")) return "audio.m4a";
+  if (m.includes("mpeg") || m.includes("mp3")) return "audio.mp3";
+  if (m.includes("wav")) return "audio.wav";
+  if (m.includes("ogg")) return "audio.ogg";
+  return "audio.webm";
+};
+
+const micErrorMessage = (err: unknown) => {
+  const anyErr = err as { name?: string; message?: string };
+  const name = typeof anyErr?.name === "string" ? anyErr.name : "";
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return "Permissão do microfone negada.";
+  }
+  if (name === "NotFoundError") {
+    return "Nenhum microfone encontrado.";
+  }
+  if (name === "NotReadableError") {
+    return "Não foi possível acessar o microfone (talvez esteja em uso).";
+  }
+  const message = err instanceof Error ? err.message : typeof anyErr?.message === "string" ? anyErr.message : "";
+  return message || "Falha ao acessar o microfone.";
+};
+
 export const AIMicModal = ({
   open,
   onClose,
@@ -40,6 +78,11 @@ export const AIMicModal = ({
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const autoStartAttemptedRef = useRef(false);
+  const openRef = useRef(open);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   const audioUrl = useMemo(
     () => (audioBlob ? URL.createObjectURL(audioBlob) : null),
@@ -81,6 +124,61 @@ export const AIMicModal = ({
 
   const canUse = Boolean(organizationId && token && accounts.length > 0);
 
+  const stopStream = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  };
+
+  const startRecording = useCallback(async () => {
+    setError(null);
+    setAudioBlob(null);
+    chunksRef.current = [];
+    try {
+      if (!("MediaRecorder" in window)) {
+        setError("Seu navegador não suporta gravação de áudio.");
+        return;
+      }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("Seu navegador não permite acesso ao microfone.");
+        return;
+      }
+      stopStream();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!openRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      streamRef.current = stream;
+
+      const mimeType = pickRecorderMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        if (!openRef.current) return;
+        if (!blob.size) {
+          setAudioBlob(null);
+          setError("Áudio vazio. Tente gravar novamente.");
+        } else {
+          setAudioBlob(blob);
+        }
+        setRecording(false);
+        stopStream();
+      };
+
+      recorder.start(250);
+      setRecording(true);
+    } catch (err) {
+      setError(micErrorMessage(err));
+      stopStream();
+      setRecording(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     if (!canUse || sending) return;
@@ -90,59 +188,18 @@ export const AIMicModal = ({
 
     autoStartAttemptedRef.current = true;
     void startRecording();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, canUse, hasRecorder, sending, recording, audioBlob]);
+  }, [open, canUse, hasRecorder, sending, recording, audioBlob, startRecording]);
 
-  const stopStream = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-  };
-
-  const startRecording = async () => {
-    setError(null);
-    setAudioBlob(null);
-    chunksRef.current = [];
-    try {
-      if (!("MediaRecorder" in window)) {
-        setError("Seu navegador não suporta gravação de áudio.");
-        return;
-      }
-      stopStream();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        setAudioBlob(blob);
-        setRecording(false);
-        stopStream();
-      };
-
-      recorder.start();
-      setRecording(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao acessar o microfone.");
-      stopStream();
-      setRecording(false);
-    }
-  };
-
-  const stopRecording = () => {
+  const stopRecording = useCallback(() => {
     setError(null);
     try {
       mediaRecorderRef.current?.stop();
     } catch {
       // ignore
     }
-  };
+  }, []);
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!organizationId || !token) return;
     if (!audioBlob) {
       setError("Grave um áudio primeiro.");
@@ -158,7 +215,7 @@ export const AIMicModal = ({
         accounts,
         categories,
         audio: audioBlob,
-        filename: "audio.webm",
+        filename: audioFilenameForMime(audioBlob.type),
       });
       onSuggested(result);
       onClose();
@@ -167,7 +224,7 @@ export const AIMicModal = ({
     } finally {
       setSending(false);
     }
-  };
+  }, [accounts, audioBlob, categories, onClose, onSuggested, organizationId, token]);
 
   if (!open) return null;
 

@@ -71,8 +71,10 @@ const QuickAddPage = () => {
   const [fabOpen, setFabOpen] = useState(false);
   const holdTimer = useRef<number | null>(null);
   const plusHoldFired = useRef(false);
+  const suppressPlusClickUntil = useRef(0);
   const actionHoldTimer = useRef<number | null>(null);
   const actionHoldFired = useRef(false);
+  const suppressActionClickUntil = useRef(0);
   const [recentsVersion, setRecentsVersion] = useState(0);
   const [balance, setBalance] = useState<{ value: number; missingRate: boolean } | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
@@ -267,6 +269,12 @@ const QuickAddPage = () => {
       clearTimeout(holdTimer.current);
       holdTimer.current = null;
     }
+    if (plusHoldFired.current) {
+      // Some browsers fire a delayed click after a long-press release.
+      // Suppress that click to avoid opening the favorite action unintentionally.
+      suppressPlusClickUntil.current = Date.now() + 450;
+      plusHoldFired.current = false;
+    }
   };
 
   const startActionHold = (key: QuickAction["key"]) => {
@@ -284,6 +292,10 @@ const QuickAddPage = () => {
     if (actionHoldTimer.current) {
       clearTimeout(actionHoldTimer.current);
       actionHoldTimer.current = null;
+    }
+    if (actionHoldFired.current) {
+      suppressActionClickUntil.current = Date.now() + 450;
+      actionHoldFired.current = false;
     }
   };
 
@@ -476,10 +488,7 @@ const QuickAddPage = () => {
             onTouchEnd={endActionHold}
             onTouchCancel={endActionHold}
             onClick={() => {
-              if (actionHoldFired.current) {
-                actionHoldFired.current = false;
-                return;
-              }
+              if (Date.now() < suppressActionClickUntil.current) return;
               handleAction("manual");
             }}
             className={`relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl ${
@@ -507,10 +516,7 @@ const QuickAddPage = () => {
             onTouchEnd={endActionHold}
             onTouchCancel={endActionHold}
             onClick={() => {
-              if (actionHoldFired.current) {
-                actionHoldFired.current = false;
-                return;
-              }
+              if (Date.now() < suppressActionClickUntil.current) return;
               handleAction("camera");
             }}
             className={`relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl ${
@@ -538,10 +544,7 @@ const QuickAddPage = () => {
             onTouchEnd={endActionHold}
             onTouchCancel={endActionHold}
             onClick={() => {
-              if (actionHoldFired.current) {
-                actionHoldFired.current = false;
-                return;
-              }
+              if (Date.now() < suppressActionClickUntil.current) return;
               handleAction("mic");
             }}
             className={`relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl ${
@@ -570,10 +573,7 @@ const QuickAddPage = () => {
           onTouchEnd={endHold}
           onTouchCancel={endHold}
           onClick={() => {
-            if (plusHoldFired.current) {
-              plusHoldFired.current = false;
-              return;
-            }
+            if (Date.now() < suppressPlusClickUntil.current) return;
             if (fabOpen) {
               setFabOpen(false);
               return;

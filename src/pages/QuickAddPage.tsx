@@ -483,7 +483,7 @@ const QuickAddPage = () => {
               handleAction("manual");
             }}
             className={`relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl ${
-              (favoriteAction ?? "manual") === "manual"
+              favoriteAction === "manual"
                 ? "text-amber-700 ring-2 ring-amber-200"
                 : "text-slate-700 ring-1 ring-slate-200"
             }`}
@@ -492,7 +492,7 @@ const QuickAddPage = () => {
             title="Segure para favoritar"
           >
             <Icon name="keyboard" className="h-5 w-5" />
-            {(favoriteAction ?? "manual") === "manual" ? (
+            {favoriteAction === "manual" ? (
               <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-white shadow">
                 <Icon name="star" className="h-3 w-3" />
               </span>

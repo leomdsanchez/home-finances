@@ -5,10 +5,12 @@ import { Icon } from "./Icon";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { deleteTransaction, deleteTransfer } from "../services/transactionService";
 import { formatAmount } from "../lib/currency";
+import { formatYMDToPtBR } from "../lib/date";
 
 type TransferItem = {
   kind: "transfer";
   id: string;
+  status: Transaction["status"];
   fromAccountId: string;
   toAccountId: string;
   amountFrom: number;
@@ -22,6 +24,7 @@ type TransferItem = {
 type SingleItem = {
   kind: "expense" | "income";
   id: string;
+  status: Transaction["status"];
   amount: number;
   currency: string;
   accountId: string;
@@ -78,7 +81,7 @@ export const RecentTransactionsCard = ({
         let query = supabase
           .from("transactions")
           .select(
-            "id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at",
+            "id, account_id, category_id, type, status, amount, currency, date, note, transfer_id, exchange_rate, created_at",
           )
           .eq("organization_id", organizationId)
           .order("date", { ascending: false })
@@ -104,6 +107,7 @@ export const RecentTransactionsCard = ({
             accountId: row.account_id,
             categoryId: row.category_id ?? null,
             type: row.type,
+            status: row.status,
             amount: row.amount,
             currency: row.currency,
             date: row.date,
@@ -128,6 +132,7 @@ export const RecentTransactionsCard = ({
           items.push({
             kind: tx.type,
             id: tx.id,
+            status: tx.status,
             amount: tx.amount,
             currency: tx.currency,
             accountId: tx.accountId,
@@ -143,6 +148,7 @@ export const RecentTransactionsCard = ({
             items.push({
               kind: "transfer",
               id: transferId,
+              status: from.status === "previsto" || to.status === "previsto" ? "previsto" : "realizado",
               fromAccountId: from.accountId,
               toAccountId: to.accountId,
               amountFrom: from.amount,
@@ -157,6 +163,7 @@ export const RecentTransactionsCard = ({
               items.push({
                 kind: leg.type,
                 id: leg.id,
+                status: leg.status,
                 amount: leg.amount,
                 currency: leg.currency,
                 accountId: leg.accountId,
@@ -243,7 +250,14 @@ export const RecentTransactionsCard = ({
                       <Icon name="transfer" className="h-4 w-4 text-purple-600" />
                     </div>
                     <div className="space-y-1 text-sm min-w-0">
-                      <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
+                        {item.status === "previsto" ? (
+                          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold text-amber-700">
+                            Previsto
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="text-xs text-slate-500 space-y-0.5">
                         <p className="flex items-center gap-1">
                           <Icon name="arrow-up-right" className="h-3 w-3 text-slate-500" />
@@ -260,7 +274,7 @@ export const RecentTransactionsCard = ({
                     <div className="text-right text-sm text-slate-900">
                       <p className="font-semibold">{formatAmount(item.amountTo, item.currencyTo)}</p>
                       <p className="text-xs text-slate-500">
-                        {new Date(item.date).toLocaleDateString("pt-BR")}
+                        {formatYMDToPtBR(item.date)}
                       </p>
                       <p className="text-xs text-slate-500">{formatAmount(item.amountFrom, item.currencyFrom)}</p>
                     </div>
@@ -294,7 +308,14 @@ export const RecentTransactionsCard = ({
                     />
                   </div>
                   <div className="space-y-1 text-sm min-w-0">
-                    <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
+                      {item.status === "previsto" ? (
+                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold text-amber-700">
+                          Previsto
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="text-xs text-slate-500">
                       {accountNameById.get(item.accountId) ?? "Conta"}
                     </p>
@@ -305,7 +326,7 @@ export const RecentTransactionsCard = ({
                     {isExpense ? "-" : "+"}
                     {formatAmount(item.amount, item.currency)}
                     <p className="text-xs font-normal text-slate-500">
-                      {new Date(item.date).toLocaleDateString("pt-BR")}
+                      {formatYMDToPtBR(item.date)}
                     </p>
                   </div>
                   <button

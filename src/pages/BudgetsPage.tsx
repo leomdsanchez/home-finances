@@ -6,6 +6,9 @@ import { useCategories } from "../hooks/useCategories";
 import { useBudgets } from "../hooks/useBudgets";
 import { BudgetModal } from "../components/BudgetModal";
 import type { Budget } from "../types/domain";
+import { useBudgetConsumption } from "../hooks/useBudgetConsumption";
+import { formatAmount } from "../lib/currency";
+import { currentMonthLabelPtBR } from "../lib/date";
 
 const BudgetsPage = () => {
   const { organization, error: orgError } = useCurrentOrganization();
@@ -18,6 +21,8 @@ const BudgetsPage = () => {
     removeBudget,
     editBudget,
   } = useBudgets(organization?.id);
+  const { spentByBudget, loading: spentLoading, error: spentError } =
+    useBudgetConsumption(organization?.id, budgets);
 
   const [showModal, setShowModal] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
@@ -27,6 +32,15 @@ const BudgetsPage = () => {
     categories.forEach((c) => map.set(c.id, c.name));
     return map;
   }, [categories]);
+
+  const monthLabel = currentMonthLabelPtBR();
+
+  const sortedBudgets = useMemo(() => {
+    const general: Budget[] = [];
+    const byCategory: Budget[] = [];
+    budgets.forEach((b) => (b.categoryId ? byCategory.push(b) : general.push(b)));
+    return [...general, ...byCategory];
+  }, [budgets]);
 
   const handleSaveBudget = async (params: {
     budgetId?: string;
@@ -60,15 +74,17 @@ const BudgetsPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-800">Limites por categoria</p>
-              <p className="muted">Um limite geral ou por categoria, sem mês.</p>
+              <p className="muted">
+                Consumo em {monthLabel} (realizado; transferências não contam).
+              </p>
             </div>
-            {budgetLoading ? (
+            {budgetLoading || spentLoading ? (
               <Icon name="loader" className="h-4 w-4 animate-spin text-slate-400" />
             ) : null}
           </div>
-          {orgError || catError || budgetError ? (
+          {orgError || catError || budgetError || spentError ? (
             <p className="text-sm text-red-500">
-              {orgError || catError || budgetError}
+              {orgError || catError || budgetError || spentError}
             </p>
           ) : budgets.length === 0 ? (
             <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-500">
@@ -76,7 +92,7 @@ const BudgetsPage = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {budgets.map((budget) => (
+              {sortedBudgets.map((budget) => (
                 <div
                   key={budget.id}
                   className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
@@ -87,9 +103,28 @@ const BudgetsPage = () => {
                         ? categoryNameById.get(budget.categoryId) ?? "Categoria"
                         : "Geral"}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      {budget.amount} {budget.currency}
-                    </p>
+                    {(() => {
+                      const spent = spentByBudget[budget.id] ?? 0;
+                      const left = budget.amount - spent;
+                      const pctRaw = budget.amount === 0 ? 0 : (spent / budget.amount) * 100;
+                      const pct = Math.min(Math.max(pctRaw, 0), 100);
+                      const isOver = spent > budget.amount;
+                      const barColor = isOver ? "bg-red-500" : "bg-blue-600";
+                      return (
+                        <div className="space-y-1">
+                          <p className="text-xs text-slate-500">
+                            Limite: {formatAmount(budget.amount, budget.currency)} · Gasto:{" "}
+                            {formatAmount(spent, budget.currency)} · Restante:{" "}
+                            <span className={isOver ? "text-red-600" : ""}>
+                              {formatAmount(left, budget.currency)}
+                            </span>
+                          </p>
+                          <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                            <div className={`h-full ${barColor}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex items-center gap-2">
                     <button

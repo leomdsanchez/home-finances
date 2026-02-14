@@ -11,17 +11,25 @@ import { useTransactions } from "../hooks/useTransactions";
 import type { Transaction, Category } from "../types/domain";
 import type { TransactionFilters } from "../services/transactionService";
 import { formatAmount } from "../lib/currency";
+import { formatYMDToPtBR } from "../lib/date";
 
 type EditState = {
   transaction: Transaction;
   note: string;
   date: string;
   categoryId: string | null;
+  status: Transaction["status"];
 };
 
 type DeleteTarget =
   | { kind: "transaction"; id: string; label: string }
   | { kind: "transfer"; id: string; label: string };
+
+type TransferEditState = {
+  transferId: string;
+  title: string;
+  status: Transaction["status"];
+};
 
 const TransactionsPage = () => {
   const { organization } = useCurrentOrganization();
@@ -38,6 +46,7 @@ const TransactionsPage = () => {
     applyFilters,
     removeTransaction,
     removeTransfer,
+    editTransferStatus,
     editTransaction,
   } = useTransactions(organization?.id);
 
@@ -46,6 +55,9 @@ const TransactionsPage = () => {
   const [editing, setEditing] = useState<EditState | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [editingTransfer, setEditingTransfer] = useState<TransferEditState | null>(null);
+  const [transferSaving, setTransferSaving] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -80,6 +92,7 @@ const TransactionsPage = () => {
       note: tx.note ?? "",
       date: tx.date,
       categoryId: tx.categoryId,
+      status: tx.status,
     });
     setEditError(null);
   };
@@ -93,12 +106,27 @@ const TransactionsPage = () => {
         note: editing.note || null,
         date: editing.date,
         categoryId: editing.categoryId,
+        status: editing.status,
       });
       setEditing(null);
     } catch (err) {
       setEditError(err instanceof Error ? err.message : "Falha ao salvar.");
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const handleSaveTransferEdit = async () => {
+    if (!editingTransfer) return;
+    setTransferSaving(true);
+    setTransferError(null);
+    try {
+      await editTransferStatus(editingTransfer.transferId, editingTransfer.status);
+      setEditingTransfer(null);
+    } catch (err) {
+      setTransferError(err instanceof Error ? err.message : "Falha ao salvar.");
+    } finally {
+      setTransferSaving(false);
     }
   };
 
@@ -204,6 +232,23 @@ const TransactionsPage = () => {
         {showFilters && (
           <div className="card space-y-3">
             <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-sm text-slate-600">Status</label>
+                <select
+                  className="input bg-white"
+                  value={localFilters.status ?? ""}
+                  onChange={(e) =>
+                    setLocalFilters((f) => ({
+                      ...f,
+                      status: (e.target.value as "realizado" | "previsto") || undefined,
+                    }))
+                  }
+                >
+                  <option value="">Todos</option>
+                  <option value="realizado">Realizado</option>
+                  <option value="previsto">Previsto</option>
+                </select>
+              </div>
               <div className="space-y-1">
                 <label className="text-sm text-slate-600">Tipo</label>
                 <select
@@ -336,7 +381,14 @@ const TransactionsPage = () => {
                             <Icon name="transfer" className="h-4 w-4 text-purple-600" />
                           </div>
                           <div className="space-y-1 text-sm min-w-0">
-                            <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
+                              {item.from.status === "previsto" || item.to.status === "previsto" ? (
+                                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold text-amber-700">
+                                  Previsto
+                                </span>
+                              ) : null}
+                            </div>
                             <div className="text-xs text-slate-500 space-y-0.5">
                               <p className="flex items-center gap-1">
                                 <Icon name="arrow-up-right" className="h-3 w-3 text-slate-500" />
@@ -355,26 +407,43 @@ const TransactionsPage = () => {
                               {formatAmount(item.to.amount, item.to.currency)}
                             </p>
                             <p className="text-xs text-slate-500">
-                              {new Date(item.from.date).toLocaleDateString("pt-BR")}
+                              {formatYMDToPtBR(item.from.date)}
                             </p>
                             <p className="text-xs text-slate-500">
                               {formatAmount(item.from.amount, item.from.currency)}
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDeleteTarget({
-                                kind: "transfer",
-                                id: item.transferId,
-                                label: title,
-                              })
-                            }
-                            className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
-                            aria-label="Remover transferência"
-                          >
-                            <Icon name="trash" className="h-3.5 w-3.5" />
-                          </button>
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingTransfer({
+                                  transferId: item.transferId,
+                                  title,
+                                  status: item.from.status,
+                                });
+                                setTransferError(null);
+                              }}
+                              className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                              aria-label="Editar transferência"
+                            >
+                              <Icon name="edit" className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDeleteTarget({
+                                  kind: "transfer",
+                                  id: item.transferId,
+                                  label: title,
+                                })
+                              }
+                              className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
+                              aria-label="Remover transferência"
+                            >
+                              <Icon name="trash" className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -400,7 +469,14 @@ const TransactionsPage = () => {
                           />
                         </div>
                         <div className="space-y-1 text-sm min-w-0">
-                          <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
+                            {tx.status === "previsto" ? (
+                              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold text-amber-700">
+                                Previsto
+                              </span>
+                            ) : null}
+                          </div>
                           <p className="text-xs text-slate-500">
                             {accountNameById.get(tx.accountId) ?? "Conta"}
                             {categoryName ? ` · ${categoryName}` : ""}
@@ -412,7 +488,7 @@ const TransactionsPage = () => {
                           {isExpense ? "-" : "+"}
                           {formatAmount(tx.amount, tx.currency)}
                           <p className="text-xs font-normal text-slate-500">
-                            {new Date(tx.date).toLocaleDateString("pt-BR")}
+                            {formatYMDToPtBR(tx.date)}
                           </p>
                         </div>
                         <div className="flex flex-col gap-1">
@@ -491,6 +567,22 @@ const TransactionsPage = () => {
             </div>
             <div className="space-y-3">
               <div className="space-y-1">
+                <label className="text-sm text-slate-600">Status</label>
+                <select
+                  className="input bg-white"
+                  value={editing.status}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      status: e.target.value as Transaction["status"],
+                    })
+                  }
+                >
+                  <option value="realizado">Realizado</option>
+                  <option value="previsto">Previsto</option>
+                </select>
+              </div>
+              <div className="space-y-1">
                 <label className="text-sm text-slate-600">Nota</label>
                 <Input
                   value={editing.note}
@@ -527,6 +619,77 @@ const TransactionsPage = () => {
               <Button onClick={handleSaveEdit} disabled={editSaving}>
                 {editSaving ? "Salvando..." : "Salvar"}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer edit modal */}
+      {editingTransfer && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6"
+          onClick={() => setEditingTransfer(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-slate-900">Editar transferência</h2>
+                <p className="text-xs text-slate-500 line-clamp-1">{editingTransfer.title}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTransfer(null)}
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                aria-label="Fechar"
+              >
+                <Icon name="close" className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-sm text-slate-600">Status</label>
+                <select
+                  className="input bg-white"
+                  value={editingTransfer.status}
+                  onChange={(e) =>
+                    setEditingTransfer({
+                      ...editingTransfer,
+                      status: e.target.value as Transaction["status"],
+                    })
+                  }
+                >
+                  <option value="realizado">Realizado</option>
+                  <option value="previsto">Previsto</option>
+                </select>
+              </div>
+              {transferError ? <p className="text-sm text-red-500">{transferError}</p> : null}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setEditingTransfer(null)}
+                  className="flex-1"
+                  disabled={transferSaving}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSaveTransferEdit}
+                  className="flex-1"
+                  disabled={transferSaving}
+                >
+                  {transferSaving ? (
+                    <>
+                      <Icon name="loader" className="h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Salvar"
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

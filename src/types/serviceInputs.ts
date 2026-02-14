@@ -1,5 +1,7 @@
 // Tipos específicos de entrada para serviços (não fazem parte do domínio).
 
+import type { TransactionStatus } from "./domain";
+
 export type CreateUserParams = {
   email: string;
   password: string;
@@ -37,4 +39,5 @@ export type CreateTransferParams = {
   currencyTo: string;
   date: string; // ISO date
   note?: string | null;
+  status?: TransactionStatus;
 };

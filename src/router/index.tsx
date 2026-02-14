@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { Navigate, createBrowserRouter } from "react-router-dom";
 import HomePage from "../pages/HomePage.tsx";
 import SignInPage from "../pages/auth/SignInPage.tsx";
 import SignUpPage from "../pages/auth/SignUpPage.tsx";
@@ -9,7 +9,6 @@ import CategoriesPage from "../pages/CategoriesPage.tsx";
 import AccountsPage from "../pages/AccountsPage.tsx";
 import BudgetsPage from "../pages/BudgetsPage.tsx";
 import TransactionsPage from "../pages/TransactionsPage.tsx";
-import DashboardPage from "../pages/DashboardPage.tsx";
 import NotFoundPage from "../pages/404Page.tsx";
 import AuthProtectedRoute from "./AuthProtectedRoute.tsx";
 import Providers from "../Providers.tsx";
@@ -68,7 +67,7 @@ const router = createBrowserRouter([
           },
           {
             path: "/dashboard",
-            element: <DashboardPage />,
+            element: <Navigate to="/transacoes" replace />,
           },
         ],
       },

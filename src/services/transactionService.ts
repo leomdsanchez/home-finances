@@ -16,7 +16,7 @@ export const createTransaction = async (
     .from("transactions")
     .insert(toDbTransaction(input))
     .select(
-      "id, organization_id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at"
+      "id, organization_id, account_id, category_id, type, status, amount, currency, date, note, transfer_id, exchange_rate, created_at"
     )
     .single();
 
@@ -34,7 +34,7 @@ export const listTransactions = async (
   const { data, error } = await client
     .from("transactions")
     .select(
-      "id, organization_id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at"
+      "id, organization_id, account_id, category_id, type, status, amount, currency, date, note, transfer_id, exchange_rate, created_at"
     )
     .eq("organization_id", organizationId)
     .order("date", { ascending: true })
@@ -51,6 +51,7 @@ export type TransactionFilters = {
   accountId?: string;
   categoryId?: string;
   type?: "income" | "expense";
+  status?: "realizado" | "previsto";
   dateFrom?: string;
   dateTo?: string;
   search?: string;
@@ -64,7 +65,7 @@ export const listTransactionsPaginated = async (
   limit = 30,
 ): Promise<{ data: Transaction[]; count: number }> => {
   const cols =
-    "id, organization_id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at";
+    "id, organization_id, account_id, category_id, type, status, amount, currency, date, note, transfer_id, exchange_rate, created_at";
 
   let query = client
     .from("transactions")
@@ -74,6 +75,7 @@ export const listTransactionsPaginated = async (
   if (filters.accountId) query = query.eq("account_id", filters.accountId);
   if (filters.categoryId) query = query.eq("category_id", filters.categoryId);
   if (filters.type) query = query.eq("type", filters.type);
+  if (filters.status) query = query.eq("status", filters.status);
   if (filters.dateFrom) query = query.gte("date", filters.dateFrom);
   if (filters.dateTo) query = query.lte("date", filters.dateTo);
   if (filters.search) query = query.ilike("note", `%${filters.search}%`);
@@ -120,6 +122,7 @@ export const updateTransaction = async (
     note?: string | null;
     date?: string;
     categoryId?: string | null;
+    status?: "realizado" | "previsto";
   }
 ): Promise<Transaction> => {
   const { organizationId, transactionId, ...fields } = params;
@@ -128,6 +131,7 @@ export const updateTransaction = async (
   if (fields.note !== undefined) updates.note = fields.note;
   if (fields.date) updates.date = fields.date;
   if (fields.categoryId !== undefined) updates.category_id = fields.categoryId ?? null;
+  if (fields.status !== undefined) updates.status = fields.status;
 
   const { data, error } = await client
     .from("transactions")
@@ -135,7 +139,7 @@ export const updateTransaction = async (
     .eq("organization_id", organizationId)
     .eq("id", transactionId)
     .select(
-      "id, organization_id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at"
+      "id, organization_id, account_id, category_id, type, status, amount, currency, date, note, transfer_id, exchange_rate, created_at"
     )
     .single();
 
@@ -166,6 +170,26 @@ export const deleteTransfer = async (
 
   if (!data || data.length === 0) {
     throw new Error(`Transfer ${transferId} not found for organization ${organizationId}`);
+  }
+};
+
+export const updateTransferStatus = async (
+  client: SupabaseClient,
+  params: {
+    organizationId: string;
+    transferId: string;
+    status: "realizado" | "previsto";
+  },
+): Promise<void> => {
+  const { organizationId, transferId, status } = params;
+  const { error } = await client
+    .from("transactions")
+    .update({ status })
+    .eq("organization_id", organizationId)
+    .eq("transfer_id", transferId);
+
+  if (error) {
+    throw new Error(`Failed to update transfer ${transferId}: ${error.message}`);
   }
 };
 
@@ -237,6 +261,7 @@ export const createTransfer = async (
     accountId: params.fromAccountId,
     categoryId: transferCategoryId,
     type: "expense",
+    status: params.status ?? "realizado",
     amount,
     currency: currencyFrom,
     date,
@@ -253,6 +278,7 @@ export const createTransfer = async (
     accountId: params.toAccountId,
     categoryId: transferCategoryId,
     type: "income",
+    status: params.status ?? "realizado",
     amount: convertedAmount, // 2 casas para evitar valores estranhos
     currency: currencyTo,
     date,
@@ -265,7 +291,7 @@ export const createTransfer = async (
     .from("transactions")
     .insert([toDbTransaction(fromTransaction), toDbTransaction(toTransaction)])
     .select(
-      "id, organization_id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at"
+      "id, organization_id, account_id, category_id, type, status, amount, currency, date, note, transfer_id, exchange_rate, created_at"
     );
 
   if (error || !data || data.length !== 2) {

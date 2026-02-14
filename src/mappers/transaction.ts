@@ -1,4 +1,4 @@
-import { Transaction, TransactionType } from "../types/domain";
+import { Transaction, TransactionStatus, TransactionType } from "../types/domain";
 
 export type DbTransactionRow = {
   id: string;
@@ -6,6 +6,7 @@ export type DbTransactionRow = {
   account_id: string;
   category_id: string | null;
   type: TransactionType;
+  status: TransactionStatus;
   amount: number;
   currency: string;
   date: string;
@@ -15,13 +16,16 @@ export type DbTransactionRow = {
   created_at: string;
 };
 
-export type NewTransactionInput = Omit<Transaction, "id" | "createdAt">;
+export type NewTransactionInput = Omit<Transaction, "id" | "createdAt" | "status"> & {
+  status?: TransactionStatus;
+};
 
 export type DbInsertTransaction = {
   organization_id: string;
   account_id: string;
   category_id: string | null;
   type: TransactionType;
+  status: TransactionStatus;
   amount: number;
   currency: string;
   date: string;
@@ -36,6 +40,7 @@ export const fromDbTransaction = (row: DbTransactionRow): Transaction => ({
   accountId: row.account_id,
   categoryId: row.category_id,
   type: row.type,
+  status: row.status,
   amount: row.amount,
   currency: row.currency,
   date: row.date,
@@ -52,6 +57,7 @@ export const toDbTransaction = (
   account_id: input.accountId,
   category_id: input.categoryId ?? null,
   type: input.type,
+  status: input.status ?? "realizado",
   amount: input.amount,
   currency: input.currency,
   date: input.date,

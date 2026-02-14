@@ -5,6 +5,7 @@ import {
   deleteTransaction,
   deleteTransfer,
   updateTransaction,
+  updateTransferStatus,
   type TransactionFilters,
 } from "../services/transactionService";
 import type { Transaction } from "../types/domain";
@@ -110,9 +111,30 @@ export const useTransactions = (organizationId?: string) => {
     }
   };
 
+  const editTransferStatus = async (transferId: string, status: "realizado" | "previsto") => {
+    if (!organizationId) return;
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      await updateTransferStatus(supabase, { organizationId, transferId, status });
+      await fetchTransactions(0, false);
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: err instanceof Error ? err.message : "Falha ao atualizar transferência",
+      }));
+    }
+  };
+
   const editTransaction = async (
     transactionId: string,
-    params: { amount?: number; note?: string | null; date?: string; categoryId?: string | null },
+    params: {
+      amount?: number;
+      note?: string | null;
+      date?: string;
+      categoryId?: string | null;
+      status?: "realizado" | "previsto";
+    },
   ) => {
     if (!organizationId) return;
     setState((prev) => ({ ...prev, loading: true, error: null }));
@@ -143,6 +165,7 @@ export const useTransactions = (organizationId?: string) => {
     applyFilters,
     removeTransaction,
     removeTransfer,
+    editTransferStatus,
     editTransaction,
   };
 };

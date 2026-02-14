@@ -241,11 +241,11 @@ const QuickAddPage = () => {
           <div className="relative flex items-center gap-2">
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/transacoes")}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-              aria-label="Dashboard"
+              aria-label="Transações"
             >
-              <Icon name="dashboard" className="h-5 w-5" />
+              <Icon name="list" className="h-5 w-5" />
             </button>
             <button
               type="button"
@@ -292,8 +292,10 @@ const QuickAddPage = () => {
                 categories={categories}
                 loading={budgetLoading || orgLoading || catLoading}
                 error={budgetError}
+                refreshKey={recentsVersion}
                 className="h-full"
                 onEdit={handleEditBudget}
+                onOpenBudgets={() => navigate("/orcamentos")}
               />
             </div>
             <div className="relative flex-1 min-h-0 flex flex-col scrollbar-hide">

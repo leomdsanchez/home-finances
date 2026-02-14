@@ -1,5 +1,6 @@
 export type AccountType = "bank" | "card" | "cash" | "other";
 export type TransactionType = "income" | "expense";
+export type TransactionStatus = "realizado" | "previsto";
 
 export type Organization = {
   id: string;
@@ -35,6 +36,7 @@ export type Transaction = {
   accountId: string;
   categoryId: string | null;
   type: TransactionType;
+  status: TransactionStatus;
   amount: number;
   currency: string;
   date: string;

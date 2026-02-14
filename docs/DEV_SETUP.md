@@ -13,11 +13,14 @@
 - `.env` (app Vite):
   - `VITE_SUPABASE_URL=https://qonkdzfrlnpjdpesgtcj.supabase.co` (projeto fixo)
   - `VITE_SUPABASE_ANON_KEY=<anon key do projeto>`
+  - Não coloque credenciais sensíveis com prefixo `VITE_` (Vite expõe no bundle do frontend).
 - `.env.test` (testes Vitest):
   - `SUPABASE_URL=https://qonkdzfrlnpjdpesgtcj.supabase.co`
   - `SUPABASE_ANON_KEY=<anon key>`
   - `SUPABASE_SERVICE_ROLE_KEY=<service role key>`
   - (opcional) `SUPABASE_TEST_PASSWORD=<senha fixa para os usuários de teste>`
+- (opcional) Migrações sem CLI:
+  - `SUPABASE_DB_PASSWORD=<senha do Postgres do projeto>` (use com `python3 scripts/apply_migrations.py`; ver `docs/MIGRATION.md`)
 - Não commitar essas chaves; elas vêm do dashboard do Supabase.
 
 ## Comandos essenciais

@@ -189,7 +189,6 @@ describe("negative scenarios", () => {
 
     const insertBudget = await anonTestClient.from("budgets").insert({
       organization_id: org.id,
-      month: "2025-09",
       category_id: category.id,
       amount: 1,
       currency: "USD",

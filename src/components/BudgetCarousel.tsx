@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import supabase from "../lib/supabaseClient";
+import { useMemo } from "react";
 import type { Budget, Category } from "../types/domain";
 import { Icon } from "./Icon";
 import { formatAmount } from "../lib/currency";
+import { useBudgetConsumption } from "../hooks/useBudgetConsumption";
+import { currentMonthLabelPtBR } from "../lib/date";
 
 type Props = {
   organizationId?: string;
@@ -10,14 +11,10 @@ type Props = {
   categories: Category[];
   loading: boolean;
   error: string | null;
+  refreshKey?: number;
   className?: string;
   onEdit?: (budget: Budget) => void;
-};
-
-type ExpenseRow = {
-  category_id: string | null;
-  amount: number;
-  currency: string;
+  onOpenBudgets?: () => void;
 };
 
 export const BudgetCarousel = ({
@@ -26,12 +23,13 @@ export const BudgetCarousel = ({
   categories,
   loading,
   error,
+  refreshKey = 0,
   className = "",
   onEdit,
+  onOpenBudgets,
 }: Props) => {
-  const [spentByBudget, setSpentByBudget] = useState<Record<string, number>>({});
-  const [spentLoading, setSpentLoading] = useState(false);
-  const [spentError, setSpentError] = useState<string | null>(null);
+  const { spentByBudget, loading: spentLoading, error: spentError } =
+    useBudgetConsumption(organizationId, budgets, refreshKey);
 
   const categoryNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -39,56 +37,46 @@ export const BudgetCarousel = ({
     return map;
   }, [categories]);
 
-  useEffect(() => {
-    const fetchExpenses = async () => {
-      if (!organizationId || budgets.length === 0) {
-        setSpentByBudget({});
-        return;
-      }
-      setSpentLoading(true);
-      setSpentError(null);
-      try {
-        const { data, error: supaError } = await supabase
-          .from("transactions")
-          .select("category_id, amount, currency, type")
-          .eq("organization_id", organizationId)
-          .eq("type", "expense");
-
-        if (supaError) throw new Error(supaError.message);
-
-        const totals = new Map<string, number>();
-        (data as ExpenseRow[] | null)?.forEach((row) => {
-          const categoryKey = `${row.category_id ?? "all"}|${row.currency}`;
-          const allKey = `all|${row.currency}`;
-          totals.set(categoryKey, (totals.get(categoryKey) ?? 0) + (row.amount ?? 0));
-          totals.set(allKey, (totals.get(allKey) ?? 0) + (row.amount ?? 0));
-        });
-
-        const map: Record<string, number> = {};
-        budgets.forEach((budget) => {
-          const key = `${budget.categoryId ?? "all"}|${budget.currency}`;
-          const spent = totals.get(key) ?? 0;
-          map[budget.id] = spent;
-        });
-        setSpentByBudget(map);
-      } catch (err) {
-        setSpentError(err instanceof Error ? err.message : "Falha ao carregar gastos.");
-      } finally {
-        setSpentLoading(false);
-      }
-    };
-
-    void fetchExpenses();
-  }, [organizationId, budgets]);
+  const sortedBudgets = useMemo(() => {
+    const general: Budget[] = [];
+    const byCategory: Budget[] = [];
+    budgets.forEach((b) => (b.categoryId ? byCategory.push(b) : general.push(b)));
+    return [...general, ...byCategory];
+  }, [budgets]);
 
   const hasError = error || spentError;
+  const monthLabel = currentMonthLabelPtBR();
 
   return (
     <section className={`flex h-full flex-col gap-3 ${className}`}>
       <div className="flex items-center justify-between px-1">
-        <p className="text-sm font-semibold text-slate-800">Orçamentos</p>
+        <div>
+          {onOpenBudgets ? (
+            <button
+              type="button"
+              onClick={onOpenBudgets}
+              className="text-left transition hover:opacity-80"
+            >
+              <p className="text-sm font-semibold text-slate-800">Orçamentos</p>
+              <p className="text-xs text-slate-500">Consumo em {monthLabel} (realizado)</p>
+            </button>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-slate-800">Orçamentos</p>
+              <p className="text-xs text-slate-500">Consumo em {monthLabel} (realizado)</p>
+            </>
+          )}
+        </div>
         {loading || spentLoading ? (
           <Icon name="loader" className="h-4 w-4 animate-spin text-slate-400" />
+        ) : onOpenBudgets ? (
+          <button
+            type="button"
+            onClick={onOpenBudgets}
+            className="text-xs font-medium text-slate-600 hover:text-slate-900"
+          >
+            Ver detalhes
+          </button>
         ) : null}
       </div>
 
@@ -102,7 +90,7 @@ export const BudgetCarousel = ({
         ) : (
           <div className="h-full overflow-x-auto scrollbar-hide snap-x snap-mandatory px-2">
             <div className="flex h-full items-start gap-3 pr-2">
-              {budgets.map((budget) => {
+              {sortedBudgets.map((budget) => {
                 const spent = spentByBudget[budget.id] ?? 0;
                 const left = budget.amount - spent;
                 const pctRaw = budget.amount === 0 ? 0 : (spent / budget.amount) * 100;
@@ -151,7 +139,12 @@ export const BudgetCarousel = ({
                         <p className="text-3xl font-semibold tracking-tight">
                           {formatAmount(left, budget.currency)}
                         </p>
-                        <p className="text-xs text-orange-50/80">Restante para gastar</p>
+                        <p className="text-xs text-orange-50/80">
+                          Restante para gastar{" "}
+                          <span className="text-orange-100/70">
+                            (limite: {formatAmount(budget.amount, budget.currency)})
+                          </span>
+                        </p>
                       </div>
                       <div className="h-[20px] rounded-full bg-white/15 overflow-hidden">
                         <div

@@ -15,6 +15,7 @@ import type { Account } from "../../types/domain";
 import supabase from "../../lib/supabaseClient";
 import { createTransaction, createTransfer } from "../../services/transactionService";
 import { useExchangeDefaults } from "../../hooks/useExchangeDefaults";
+import { todayYMD } from "../../lib/date";
 
 type Mode = "expense" | "income" | "transfer";
 type StepId = "type" | "account" | "amount" | "details";
@@ -25,6 +26,7 @@ const TWO_DECIMAL_CURRENCIES = new Set(["BRL", "USD", "EUR"]);
 
 type FormState = {
   mode: Mode;
+  status: "realizado" | "previsto";
   accountId: string;
   toAccountId: string;
   categoryId: string | null;
@@ -43,13 +45,14 @@ type FormAction =
 
 const createInitialState = (accounts: Account[]): FormState => ({
   mode: "expense",
+  status: "realizado",
   accountId: accounts[0]?.id ?? "",
   toAccountId: accounts[1]?.id ?? accounts[0]?.id ?? "",
   categoryId: null,
   amount: "",
   exchangeRate: "1",
   note: "",
-  date: new Date().toISOString().slice(0, 10),
+  date: todayYMD(),
   step: "type",
 });
 
@@ -325,6 +328,7 @@ export const ManualTransactionModal = ({
           currencyTo: toAcc.currency,
           date: form.date,
           note: form.note || null,
+          status: form.status,
         });
         onClose();
         onSaved?.();
@@ -344,6 +348,7 @@ export const ManualTransactionModal = ({
         accountId: account.id,
         categoryId: category?.id ?? null,
         type: form.mode,
+        status: form.status,
         amount: amountValue,
         currency: account.currency,
         date: form.date,
@@ -413,13 +418,29 @@ export const ManualTransactionModal = ({
                     setError(null);
                   }}
                 />
-                <LabeledInput
-                  label="Data"
-                  name="date"
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => updateField("date", e.target.value)}
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <LabeledInput
+                    label="Data"
+                    name="date"
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => updateField("date", e.target.value)}
+                  />
+                  <div className="space-y-1">
+                    <label className="text-sm text-slate-600">Status</label>
+                    <select
+                      className="input bg-white"
+                      value={form.status}
+                      onChange={(e) => updateField("status", e.target.value)}
+                    >
+                      <option value="realizado">Realizado</option>
+                      <option value="previsto">Previsto</option>
+                    </select>
+                    <p className="text-xs text-slate-500">
+                      Previsto nao entra no saldo e orcamentos.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 

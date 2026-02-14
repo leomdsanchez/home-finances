@@ -16,8 +16,11 @@ Este projeto usa **Supabase Edge Functions** para chamar a OpenAI com segurança
 
 2) Deploy das funções:
    ```bash
-   supabase functions deploy ai-transaction-audio
-   supabase functions deploy ai-transaction-image
+   # Obs: se o seu projeto estiver emitindo JWT com chaves assimétricas (ex.: ES256)
+   # e o gateway retornar "Invalid JWT", faça deploy com --no-verify-jwt.
+   # As funções validam o usuário internamente via auth.getUser().
+   supabase functions deploy ai-transaction-audio --no-verify-jwt
+   supabase functions deploy ai-transaction-image --no-verify-jwt
    ```
 
 ## Funções criadas

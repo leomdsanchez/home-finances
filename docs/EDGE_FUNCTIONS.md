@@ -30,17 +30,19 @@ supabase functions deploy <nome-da-funcao>
 ```
 Exemplo:
 ```sh
-supabase functions deploy balance
+supabase functions deploy balance --no-verify-jwt
 ```
 
+Obs: se o gateway responder `Invalid JWT` ao chamar a função, é provável que seu projeto esteja emitindo JWT com chaves assimétricas (ex.: ES256). Neste projeto, as funções já validam o token internamente via `auth.getUser()`, então o deploy com `--no-verify-jwt` é o caminho recomendado.
+
 ## Testar função deployada
-- Invocar passando o `organizationId` (exemplo):
+- Invocar via HTTP (exemplo):
 ```sh
-supabase functions invoke balance --data '{"organizationId": "<org-id>"}'
-```
-- Se quiser testar sem exigir JWT:
-```sh
-supabase functions invoke balance --no-verify-jwt --data '{"organizationId": "<org-id>"}'
+curl -sS -X POST "$VITE_SUPABASE_URL/functions/v1/balance" \
+  -H "Content-Type: application/json" \
+  -H "apikey: $VITE_SUPABASE_ANON_KEY" \
+  -H "Authorization: Bearer <access_token_do_usuario>" \
+  -d '{"organizationId": "<org-id>"}'
 ```
 (para produção, use JWT válido do usuário).
 

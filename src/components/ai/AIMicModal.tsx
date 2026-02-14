@@ -68,7 +68,9 @@ export const AIMicModal = ({
   categories,
   onSuggested,
 }: Props) => {
+  const [starting, setStarting] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [recordingReady, setRecordingReady] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +81,7 @@ export const AIMicModal = ({
   const chunksRef = useRef<BlobPart[]>([]);
   const autoStartAttemptedRef = useRef(false);
   const openRef = useRef(open);
+  const recordingReadyRef = useRef(false);
 
   useEffect(() => {
     openRef.current = open;
@@ -91,7 +94,10 @@ export const AIMicModal = ({
 
   useEffect(() => {
     if (!open) return;
+    setStarting(false);
     setRecording(false);
+    setRecordingReady(false);
+    recordingReadyRef.current = false;
     setAudioBlob(null);
     setSending(false);
     setError(null);
@@ -113,7 +119,10 @@ export const AIMicModal = ({
         // ignore
       }
       stopStream();
+      setStarting(false);
       setRecording(false);
+      setRecordingReady(false);
+      recordingReadyRef.current = false;
     }
   }, [open]);
 
@@ -132,20 +141,27 @@ export const AIMicModal = ({
   const startRecording = useCallback(async () => {
     setError(null);
     setAudioBlob(null);
+    setStarting(true);
+    setRecording(false);
+    setRecordingReady(false);
+    recordingReadyRef.current = false;
     chunksRef.current = [];
     try {
       if (!("MediaRecorder" in window)) {
         setError("Seu navegador não suporta gravação de áudio.");
+        setStarting(false);
         return;
       }
       if (!navigator.mediaDevices?.getUserMedia) {
         setError("Seu navegador não permite acesso ao microfone.");
+        setStarting(false);
         return;
       }
       stopStream();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (!openRef.current) {
         stream.getTracks().forEach((t) => t.stop());
+        setStarting(false);
         return;
       }
       streamRef.current = stream;
@@ -154,8 +170,22 @@ export const AIMicModal = ({
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
+      recorder.onstart = () => {
+        if (!openRef.current) return;
+        setStarting(false);
+        setRecording(true);
+        setRecordingReady(false);
+        recordingReadyRef.current = false;
+      };
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+        if (!recordingReadyRef.current && e.data && e.data.size > 0 && openRef.current) {
+          // Some browsers show "recording" before the encoder is actually emitting data.
+          // We only show the "Gravando..." indicator after the first chunk arrives,
+          // so the user doesn't start speaking too early and lose the beginning.
+          recordingReadyRef.current = true;
+          setRecordingReady(true);
+        }
       };
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
@@ -166,16 +196,21 @@ export const AIMicModal = ({
         } else {
           setAudioBlob(blob);
         }
+        setStarting(false);
         setRecording(false);
+        setRecordingReady(false);
+        recordingReadyRef.current = false;
         stopStream();
       };
 
       recorder.start(250);
-      setRecording(true);
     } catch (err) {
       setError(micErrorMessage(err));
       stopStream();
+      setStarting(false);
       setRecording(false);
+      setRecordingReady(false);
+      recordingReadyRef.current = false;
     }
   }, []);
 
@@ -183,21 +218,36 @@ export const AIMicModal = ({
     if (!open) return;
     if (!canUse || sending) return;
     if (!hasRecorder) return;
-    if (recording || audioBlob) return;
+    if (starting || recording || audioBlob) return;
     if (autoStartAttemptedRef.current) return;
 
     autoStartAttemptedRef.current = true;
     void startRecording();
-  }, [open, canUse, hasRecorder, sending, recording, audioBlob, startRecording]);
+  }, [open, canUse, hasRecorder, sending, starting, recording, audioBlob, startRecording]);
 
   const stopRecording = useCallback(() => {
     setError(null);
+    // If we're still starting up, cancel cleanly to avoid getting stuck.
+    if (starting && !recording) {
+      try {
+        mediaRecorderRef.current?.stop();
+      } catch {
+        // ignore
+      }
+      stopStream();
+      chunksRef.current = [];
+      setStarting(false);
+      setRecording(false);
+      setRecordingReady(false);
+      recordingReadyRef.current = false;
+      return;
+    }
     try {
       mediaRecorderRef.current?.stop();
     } catch {
       // ignore
     }
-  }, []);
+  }, [recording, starting]);
 
   const handleSend = useCallback(async () => {
     if (!organizationId || !token) return;
@@ -228,6 +278,9 @@ export const AIMicModal = ({
 
   if (!open) return null;
 
+  const showRecording = recording && recordingReady;
+  const showStarting = starting || (recording && !recordingReady);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6" onClick={onClose}>
       <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -235,7 +288,7 @@ export const AIMicModal = ({
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Lançamento com voz</h2>
             <p className="text-xs text-slate-500">
-              Fale descrição, valor e conta. Ex.: &quot;Mercado, 120 reais, Nubank&quot;.
+              Aguarde o ponto vermelho e fale descrição, valor e conta. Ex.: &quot;Mercado, 120 reais, Nubank&quot;.
             </p>
           </div>
           <button
@@ -253,16 +306,25 @@ export const AIMicModal = ({
             <div className="flex items-center gap-3">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                  recording ? "bg-red-600 text-white" : "bg-white text-slate-700"
+                  showRecording
+                    ? "bg-red-600 text-white"
+                    : showStarting
+                      ? "bg-slate-900 text-white"
+                      : "bg-white text-slate-700"
                 } ring-1 ring-slate-200`}
               >
                 <Icon name="mic" className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                {recording ? (
+                {showRecording ? (
                   <div className="flex items-center gap-2">
                     <span className="inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
                     <p className="text-sm font-medium text-slate-900">Gravando...</p>
+                  </div>
+                ) : showStarting ? (
+                  <div className="flex items-center gap-2">
+                    <Icon name="loader" className="h-4 w-4 animate-spin text-slate-500" />
+                    <p className="text-sm font-medium text-slate-900">Iniciando...</p>
                   </div>
                 ) : audioBlob ? (
                   <p className="text-sm font-medium text-slate-900">Pronto para enviar</p>
@@ -272,8 +334,10 @@ export const AIMicModal = ({
                   <p className="text-sm font-medium text-slate-900">Áudio não suportado</p>
                 )}
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {recording
+                  {showRecording
                     ? "Toque em parar para revisar, regravar ou enviar."
+                    : showStarting
+                      ? "Aguarde aparecer 'Gravando...' antes de falar."
                     : audioBlob
                       ? "Você pode ouvir antes de enviar."
                       : "Se pedir permissão, permita o microfone."}
@@ -299,6 +363,11 @@ export const AIMicModal = ({
               <Button onClick={stopRecording} disabled={sending} className="flex-1">
                 <Icon name="close" className="h-4 w-4" />
                 Parar
+              </Button>
+            ) : starting ? (
+              <Button onClick={stopRecording} disabled={sending} className="flex-1">
+                <Icon name="loader" className="h-4 w-4 animate-spin" />
+                Iniciando...
               </Button>
             ) : (
               <Button

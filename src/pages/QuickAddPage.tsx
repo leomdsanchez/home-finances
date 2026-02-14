@@ -27,12 +27,14 @@ type MenuItemKey =
   | "contas"
   | "categorias"
   | "orcamentos"
+  | "transacoes"
   | "config"
   | "logout";
 
 type MenuItem = { key: MenuItemKey; label: string; icon: IconName };
 type MenuEntry = MenuItem | { key: "divider" };
 const menuEntries: MenuEntry[] = [
+  { key: "transacoes", label: "Transações", icon: "list" },
   { key: "perfil", label: "Perfil", icon: "user" },
   { key: "organizacao", label: "Organização", icon: "building" },
   { key: "contas", label: "Contas", icon: "credit-card" },
@@ -80,6 +82,7 @@ const QuickAddPage = () => {
       categorias: "/categorias",
       contas: "/contas",
       orcamentos: "/orcamentos",
+      transacoes: "/transacoes",
     };
     const target = routes[key];
     if (target) {

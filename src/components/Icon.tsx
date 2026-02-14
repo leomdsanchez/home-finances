@@ -25,6 +25,11 @@ import {
   ArrowUpRight,
   LayoutGrid,
   X,
+  Search,
+  Filter,
+  ChevronDown,
+  Check,
+  List,
   type LucideProps,
 } from "lucide-react";
 
@@ -54,7 +59,12 @@ type IconName =
   | "arrow-down-right"
   | "arrow-up-right"
   | "close"
-  | "dashboard";
+  | "dashboard"
+  | "search"
+  | "filter"
+  | "chevron-down"
+  | "check"
+  | "list";
 
 const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   mail: Mail,
@@ -83,6 +93,11 @@ const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   "arrow-up-right": ArrowUpRight,
   dashboard: LayoutGrid,
   close: X,
+  search: Search,
+  filter: Filter,
+  "chevron-down": ChevronDown,
+  check: Check,
+  list: List,
 };
 
 interface IconProps extends LucideProps {

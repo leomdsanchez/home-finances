@@ -46,6 +46,54 @@ export const listTransactions = async (
   return data.map(fromDbTransaction);
 };
 
+export type TransactionFilters = {
+  accountId?: string;
+  categoryId?: string;
+  type?: "income" | "expense";
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+};
+
+export const listTransactionsPaginated = async (
+  client: SupabaseClient,
+  organizationId: string,
+  filters: TransactionFilters = {},
+  offset = 0,
+  limit = 30,
+): Promise<{ data: Transaction[]; count: number }> => {
+  const cols =
+    "id, organization_id, account_id, category_id, type, amount, currency, date, note, transfer_id, exchange_rate, created_at";
+
+  let query = client
+    .from("transactions")
+    .select(cols, { count: "exact" })
+    .eq("organization_id", organizationId);
+
+  if (filters.accountId) query = query.eq("account_id", filters.accountId);
+  if (filters.categoryId) query = query.eq("category_id", filters.categoryId);
+  if (filters.type) query = query.eq("type", filters.type);
+  if (filters.dateFrom) query = query.gte("date", filters.dateFrom);
+  if (filters.dateTo) query = query.lte("date", filters.dateTo);
+  if (filters.search) query = query.ilike("note", `%${filters.search}%`);
+
+  query = query
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    throw new Error(`Failed to list transactions: ${error.message}`);
+  }
+
+  return {
+    data: (data ?? []).map(fromDbTransaction),
+    count: count ?? 0,
+  };
+};
+
 export const deleteTransaction = async (
   client: SupabaseClient,
   organizationId: string,

@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 import { useCurrentOrganization } from "../hooks/useCurrentOrganization";
 import { useAccounts } from "../hooks/useAccounts";
+import { useAccountBalances } from "../hooks/useAccountBalances";
 import { RecentTransactionsCard } from "../components/RecentTransactionsCard";
 import type { Account } from "../types/domain";
+
+const formatBalance = (value: number, currency: string) => {
+  const code = currency.toUpperCase();
+  const noCents = code === "UYU";
+  return `${value.toLocaleString("pt-BR", {
+    minimumFractionDigits: noCents ? 0 : 2,
+    maximumFractionDigits: noCents ? 0 : 2,
+  })} ${code}`;
+};
 
 const DashboardPage = () => {
   const { organization } = useCurrentOrganization();
   const { accounts, loading: accLoading } = useAccounts(organization?.id);
+  const { balances } = useAccountBalances(organization?.id);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -17,6 +28,7 @@ const DashboardPage = () => {
 
   const renderAccountCard = (acc: Account) => {
     const active = selectedAccountId === acc.id;
+    const balance = balances.get(acc.id);
     return (
       <button
         key={acc.id}
@@ -30,7 +42,9 @@ const DashboardPage = () => {
           <p className="text-sm font-semibold">{acc.name}</p>
           <p className="text-xs text-orange-100/80">{acc.currency}</p>
         </div>
-        <p className="text-xs text-orange-100/70">Toque para filtrar lançamentos</p>
+        <p className="text-lg font-semibold tracking-tight">
+          {balance !== undefined ? formatBalance(balance, acc.currency) : "—"}
+        </p>
       </button>
     );
   };

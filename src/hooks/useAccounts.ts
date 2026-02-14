@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import supabase from "../lib/supabaseClient";
-import { listAccounts, createAccount, deleteAccount } from "../services/accountService";
+import { listAccounts, createAccount, deleteAccount, updateAccount } from "../services/accountService";
 import type { Account } from "../types/domain";
 
 type State = {
@@ -65,6 +65,24 @@ export const useAccounts = (organizationId?: string) => {
     }
   };
 
+  const editAccount = async (
+    accountId: string,
+    params: { name?: string; currency?: string; type?: Account["type"] },
+  ) => {
+    if (!organizationId) return;
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      await updateAccount(supabase, { organizationId, accountId, ...params });
+      await fetchAccounts();
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: err instanceof Error ? err.message : "Falha ao atualizar conta",
+      }));
+    }
+  };
+
   useEffect(() => {
     void fetchAccounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,5 +93,6 @@ export const useAccounts = (organizationId?: string) => {
     refresh: fetchAccounts,
     addAccount,
     removeAccount,
+    editAccount,
   };
 };

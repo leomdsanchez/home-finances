@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import supabase from "../lib/supabaseClient";
 import type { Account, Transaction } from "../types/domain";
 import { Icon } from "./Icon";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { deleteTransaction, deleteTransfer } from "../services/transactionService";
 
 type TransferItem = {
   kind: "transfer";
@@ -28,6 +30,10 @@ type SingleItem = {
 
 type Item = TransferItem | SingleItem;
 
+type DeleteTarget =
+  | { kind: "transaction"; id: string; label: string }
+  | { kind: "transfer"; id: string; label: string };
+
 type Props = {
   organizationId?: string;
   accounts: Account[];
@@ -36,6 +42,7 @@ type Props = {
   fill?: boolean;
   className?: string;
   accountId?: string | null;
+  onDeleted?: () => void;
 };
 
 export const RecentTransactionsCard = ({
@@ -46,10 +53,14 @@ export const RecentTransactionsCard = ({
   fill = false,
   className = "",
   accountId = null,
+  onDeleted,
 }: Props) => {
   const [recents, setRecents] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [internalRefresh, setInternalRefresh] = useState(0);
 
   const accountNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -165,7 +176,26 @@ export const RecentTransactionsCard = ({
     };
 
     void fetchRecents();
-  }, [organizationId, limit, refreshKey, accountId]);
+  }, [organizationId, limit, refreshKey, accountId, internalRefresh]);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || !organizationId) return;
+    setDeleting(true);
+    try {
+      if (deleteTarget.kind === "transfer") {
+        await deleteTransfer(supabase, organizationId, deleteTarget.id);
+      } else {
+        await deleteTransaction(supabase, organizationId, deleteTarget.id);
+      }
+      setDeleteTarget(null);
+      setInternalRefresh((v) => v + 1);
+      onDeleted?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha ao remover.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const formatAmount = (value: number, currency: string) => {
     const code = currency.toUpperCase();
@@ -216,11 +246,11 @@ export const RecentTransactionsCard = ({
                   key={item.id}
                   className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-3"
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className="mt-1">
                       <Icon name="transfer" className="h-4 w-4 text-purple-600" />
                     </div>
-                    <div className="space-y-1 text-sm">
+                    <div className="space-y-1 text-sm min-w-0">
                       <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
                       <div className="text-xs text-slate-500 space-y-0.5">
                         <p className="flex items-center gap-1">
@@ -234,12 +264,24 @@ export const RecentTransactionsCard = ({
                       </div>
                     </div>
                   </div>
-                  <div className="text-right text-sm text-slate-900">
-                    <p className="font-semibold">{formatAmount(item.amountTo, item.currencyTo)}</p>
-                    <p className="text-xs text-slate-500">
-                      {new Date(item.date).toLocaleDateString("pt-BR")}
-                    </p>
-                    <p className="text-xs text-slate-500">{formatAmount(item.amountFrom, item.currencyFrom)}</p>
+                  <div className="flex items-start gap-2">
+                    <div className="text-right text-sm text-slate-900">
+                      <p className="font-semibold">{formatAmount(item.amountTo, item.currencyTo)}</p>
+                      <p className="text-xs text-slate-500">
+                        {new Date(item.date).toLocaleDateString("pt-BR")}
+                      </p>
+                      <p className="text-xs text-slate-500">{formatAmount(item.amountFrom, item.currencyFrom)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDeleteTarget({ kind: "transfer", id: item.id, label: title })
+                      }
+                      className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
+                      aria-label="Remover transferência"
+                    >
+                      <Icon name="trash" className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
               );
@@ -252,28 +294,38 @@ export const RecentTransactionsCard = ({
                 key={item.id}
                 className="flex items-start justify-between rounded-lg border border-slate-200 bg-white px-3 py-3"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div className="mt-1">
                     <Icon
                       name={isExpense ? "arrow-up-right" : "arrow-down-right"}
                       className={`h-4 w-4 ${isExpense ? "text-red-500" : "text-emerald-600"}`}
                     />
                   </div>
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-1 text-sm min-w-0">
                     <p className="font-semibold text-slate-900 line-clamp-2">{title}</p>
                     <p className="text-xs text-slate-500">
                       {accountNameById.get(item.accountId) ?? "Conta"}
                     </p>
                   </div>
                 </div>
-                <div
-                  className="text-right text-sm font-semibold text-slate-900"
-                >
-                  {isExpense ? "-" : "+"}
-                  {formatAmount(item.amount, item.currency)}
-                  <p className="text-xs font-normal text-slate-500">
-                    {new Date(item.date).toLocaleDateString("pt-BR")}
-                  </p>
+                <div className="flex items-start gap-2">
+                  <div className="text-right text-sm font-semibold text-slate-900">
+                    {isExpense ? "-" : "+"}
+                    {formatAmount(item.amount, item.currency)}
+                    <p className="text-xs font-normal text-slate-500">
+                      {new Date(item.date).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDeleteTarget({ kind: "transaction", id: item.id, label: title })
+                    }
+                    className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
+                    aria-label="Remover transação"
+                  >
+                    <Icon name="trash" className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
             );
@@ -281,6 +333,16 @@ export const RecentTransactionsCard = ({
         )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Remover lançamento"
+        message={`Tem certeza que deseja remover "${deleteTarget?.label ?? ""}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Remover"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+        loading={deleting}
+      />
     </section>
   );
 };

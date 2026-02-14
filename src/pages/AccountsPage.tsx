@@ -3,6 +3,7 @@ import { PageHeader } from "../components/PageHeader";
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useCurrentOrganization } from "../hooks/useCurrentOrganization";
 import { useAccounts } from "../hooks/useAccounts";
 import type { Account } from "../types/domain";
@@ -16,21 +17,58 @@ const accountTypes: { value: Account["type"]; label: string }[] = [
 
 const AccountsPage = () => {
   const { organization, loading: orgLoading, error: orgError } = useCurrentOrganization();
-  const { accounts, loading, error, addAccount, removeAccount } = useAccounts(organization?.id);
+  const { accounts, loading, error, addAccount, removeAccount, editAccount } = useAccounts(organization?.id);
 
   const [showModal, setShowModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [type, setType] = useState<Account["type"]>("bank");
+  const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const openCreateModal = () => {
+    setEditingAccount(null);
+    setName("");
+    setCurrency("USD");
+    setType("bank");
+    setShowModal(true);
+  };
+
+  const openEditModal = (account: Account) => {
+    setEditingAccount(account);
+    setName(account.name);
+    setCurrency(account.currency);
+    setType(account.type);
+    setShowModal(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) return;
-    await addAccount({ name, currency, type });
+    if (editingAccount) {
+      await editAccount(editingAccount.id, { name, currency, type });
+    } else {
+      await addAccount({ name, currency, type });
+    }
     setName("");
     setCurrency("USD");
     setType("bank");
+    setEditingAccount(null);
     setShowModal(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await removeAccount(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch {
+      // error handled by hook
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -62,16 +100,25 @@ const AccountsPage = () => {
                   <div>
                     <p className="text-sm font-semibold text-slate-800">{account.name}</p>
                     <p className="text-xs text-slate-500">
-                      {account.type} · {account.currency}
+                      {accountTypes.find((t) => t.value === account.type)?.label ?? account.type} · {account.currency}
                     </p>
                   </div>
-                  <button
-                    onClick={() => removeAccount(account.id)}
-                    className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                    aria-label={`Remover ${account.name}`}
-                  >
-                    <Icon name="trash" className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEditModal(account)}
+                      className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      aria-label={`Editar ${account.name}`}
+                    >
+                      <Icon name="edit" className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(account)}
+                      className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      aria-label={`Remover ${account.name}`}
+                    >
+                      <Icon name="trash" className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -81,7 +128,7 @@ const AccountsPage = () => {
 
         <div className="fixed bottom-6 right-6">
           <button
-            onClick={() => setShowModal(true)}
+            onClick={openCreateModal}
             className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             aria-label="Nova conta"
           >
@@ -90,16 +137,24 @@ const AccountsPage = () => {
         </div>
 
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6"
+            onClick={() => setShowModal(false)}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">Nova conta</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {editingAccount ? "Editar conta" : "Nova conta"}
+                </h2>
                 <button
                   onClick={() => setShowModal(false)}
                   className="rounded-full p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                   aria-label="Fechar modal"
                 >
-                  <Icon name="arrow-left" className="h-4 w-4" />
+                  <Icon name="close" className="h-4 w-4" />
                 </button>
               </div>
               {orgLoading ? (
@@ -147,8 +202,8 @@ const AccountsPage = () => {
                     </div>
                   </div>
                   {error && <p className="text-sm text-red-500">{error}</p>}
-                  <Button type="submit" trailingIcon="plus" disabled={loading}>
-                    {loading ? "Salvando..." : "Adicionar"}
+                  <Button type="submit" trailingIcon={editingAccount ? "check" : "plus"} disabled={loading}>
+                    {loading ? "Salvando..." : editingAccount ? "Salvar" : "Adicionar"}
                   </Button>
                 </form>
               ) : (
@@ -157,6 +212,16 @@ const AccountsPage = () => {
             </div>
           </div>
         )}
+
+        <ConfirmDialog
+          open={!!deleteTarget}
+          title="Remover conta"
+          message={`Tem certeza que deseja remover "${deleteTarget?.name ?? ""}"? Todas as transações desta conta serão perdidas.`}
+          confirmLabel="Remover"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+          loading={deleting}
+        />
       </div>
     </main>
   );

@@ -53,6 +53,44 @@ const pickCategories = (categories: unknown) =>
         .filter((c) => c.id && c.name)
     : [];
 
+const normalizeWhitespace = (value: string) => value.replace(/\s+/g, " ").trim();
+
+const cleanNote = (note: unknown, amount: unknown) => {
+  if (typeof note !== "string") return null;
+  let n = normalizeWhitespace(note);
+  if (!n) return null;
+
+  // Remove obvious money amounts (currency symbol/code/word + number).
+  n = n
+    .replace(/(?:R\\$|US\\$|€|£)\s*\d[\d.,]*/gi, "")
+    .replace(/\b(?:BRL|USD|EUR|UYU|ARS|CLP|COP|MXN|PYG|DOP|PEN|GBP)\s*\d[\d.,]*\b/gi, "")
+    .replace(
+      /\b\d[\d.,]*\s*(?:reais|real|pesos|peso|d[óo]lares?|d[óo]lar|euros?|eur|libras?|libra)\b/gi,
+      "",
+    );
+
+  // If we know the numeric amount, try to remove it when present as a standalone token.
+  const amountNum = typeof amount === "number" && Number.isFinite(amount) ? amount : null;
+  if (amountNum !== null) {
+    const variants = new Set<string>();
+    variants.add(String(amountNum));
+    variants.add(amountNum.toFixed(2));
+    variants.add(amountNum.toFixed(2).replace(".", ","));
+    if (Number.isInteger(amountNum)) variants.add(String(Math.trunc(amountNum)));
+
+    for (const v of variants) {
+      const escaped = v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      n = n.replace(new RegExp(`(^|\\s)${escaped}(?=$|\\s)`, "g"), "$1");
+    }
+  }
+
+  n = normalizeWhitespace(n);
+  n = n.replace(/\(\s*\)/g, "").replace(/\[\s*\]/g, "").replace(/\{\s*\}/g, "");
+  n = n.replace(/^[,;:.-]+/, "").replace(/[,;:.-]+$/, "");
+  n = normalizeWhitespace(n);
+  return n || null;
+};
+
 const bytesToBase64 = (bytes: Uint8Array) => {
   let binary = "";
   const chunk = 0x8000;
@@ -67,6 +105,8 @@ const callChatVision = async (
   params: {
     image: File;
     today: string;
+    userName: string | null;
+    organizationMemberCount: number | null;
     accounts: Array<{ id: string; name: string; currency: string }>;
     categories: Array<{ id: string; name: string }>;
   },
@@ -80,10 +120,12 @@ const callChatVision = async (
     "",
     "Regras:",
     "- type deve ser 'expense' ou 'income' (default: expense).",
+    "- status deve ser: 'realizado' ou 'previsto' (default: 'realizado').",
     "- Use APENAS accountId e categoryId presentes nas listas fornecidas.",
     "- Se não conseguir determinar valor/conta, use null e inclua warnings.",
     "- date deve ser YYYY-MM-DD (default: TODAY).",
-    "- note deve ser curta e clara (ex.: nome do local).",
+    "- note deve ser SOMENTE a descrição do gasto/receita (ex.: nome do local), sem incluir valor/moeda, conta, data ou pessoa.",
+    "- Você receberá userName e o número de membros da organização apenas como contexto para interpretar \"minha conta\".",
   ].join("\n");
 
   const bytes = new Uint8Array(await params.image.arrayBuffer());
@@ -92,6 +134,8 @@ const callChatVision = async (
   const dataUrl = `data:${mime};base64,${base64}`;
 
   const textPayload = JSON.stringify({
+    userName: params.userName,
+    organizationMembers: params.organizationMemberCount,
     today: params.today,
     accounts: params.accounts,
     categories: params.categories,
@@ -102,7 +146,7 @@ const callChatVision = async (
       categoryId: "string | null",
       amount: "number | null",
       date: "YYYY-MM-DD | null",
-      note: "string | null",
+      note: "string | null (descricao apenas; sem valores/conta/moeda/data)",
       confidence: "number (0..1) | null",
       warnings: "string[]",
     },
@@ -158,7 +202,13 @@ const callChatVision = async (
   if (!parsed) {
     throw new Error("Failed to parse model JSON");
   }
-  return parsed;
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new Error("Invalid model JSON");
+  }
+
+  const suggestion = parsed as Record<string, unknown>;
+  suggestion.note = cleanNote(suggestion.note, suggestion.amount);
+  return suggestion;
 };
 
 serve(async (req: Request) => {
@@ -202,6 +252,10 @@ serve(async (req: Request) => {
       return jsonResponse(401, { error: "Unauthorized" });
     }
 
+    const userNameRaw = (userResult?.user?.user_metadata as Record<string, unknown> | null)?.name;
+    const userName =
+      typeof userNameRaw === "string" && userNameRaw.trim().length > 0 ? userNameRaw.trim() : null;
+
     const form = await req.formData();
     const organizationId = form.get("organizationId");
     const today = form.get("today");
@@ -244,9 +298,26 @@ serve(async (req: Request) => {
       return jsonResponse(403, { error: "Not authorized for this organization" });
     }
 
+    let organizationMemberCount: number | null = null;
+    try {
+      const { count, error: countError } = await supabase
+        .from("organization_members")
+        .select("user_id", { count: "exact", head: true })
+        .eq("organization_id", organizationId);
+      if (countError) {
+        console.error("ai-transaction-image: member count error", countError);
+      } else if (typeof count === "number") {
+        organizationMemberCount = count;
+      }
+    } catch (err) {
+      console.error("ai-transaction-image: member count threw", err);
+    }
+
     const structured = await callChatVision(openaiKey, {
       image: file,
       today,
+      userName,
+      organizationMemberCount,
       accounts,
       categories,
     });

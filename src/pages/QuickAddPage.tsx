@@ -49,6 +49,43 @@ const menuEntries: MenuEntry[] = [
   { key: "logout", label: "Sair", icon: "logout" },
 ];
 
+const normalizeWhitespace = (value: string) => value.replace(/\s+/g, " ").trim();
+
+const cleanAiNote = (note: string, amount: number | null) => {
+  let n = normalizeWhitespace(note);
+  if (!n) return "";
+
+  // Remove obvious money amounts (currency symbol/code/word + number).
+  n = n
+    .replace(/(?:R\\$|US\\$|€|£)\s*\d[\d.,]*/gi, "")
+    .replace(/\b(?:BRL|USD|EUR|UYU|ARS|CLP|COP|MXN|PYG|DOP|PEN|GBP)\s*\d[\d.,]*\b/gi, "")
+    .replace(
+      /\b\d[\d.,]*\s*(?:reais|real|pesos|peso|d[óo]lares?|d[óo]lar|euros?|eur|libras?|libra)\b/gi,
+      "",
+    );
+
+  // If we know the numeric amount, try to remove it when present as a standalone token.
+  const amountNum = typeof amount === "number" && Number.isFinite(amount) ? amount : null;
+  if (amountNum !== null) {
+    const variants = new Set<string>();
+    variants.add(String(amountNum));
+    variants.add(amountNum.toFixed(2));
+    variants.add(amountNum.toFixed(2).replace(".", ","));
+    if (Number.isInteger(amountNum)) variants.add(String(Math.trunc(amountNum)));
+
+    for (const v of variants) {
+      const escaped = v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      n = n.replace(new RegExp(`(^|\\s)${escaped}(?=$|\\s)`, "g"), "$1");
+    }
+  }
+
+  n = normalizeWhitespace(n);
+  n = n.replace(/\(\s*\)/g, "").replace(/\[\s*\]/g, "").replace(/\{\s*\}/g, "");
+  n = n.replace(/^[,;:.-]+/, "").replace(/[,;:.-]+$/, "");
+  n = normalizeWhitespace(n);
+  return n;
+};
+
 const QuickAddPage = () => {
   const { session } = useSession();
   const navigate = useNavigate();
@@ -341,10 +378,11 @@ const QuickAddPage = () => {
     const dateRaw = typeof suggestion.date === "string" ? suggestion.date : null;
     const date = dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : todayYMD();
 
-    const note =
+    const noteCandidate =
       typeof suggestion.note === "string" && suggestion.note.trim()
         ? suggestion.note.trim()
         : transcript ?? "";
+    const note = cleanAiNote(noteCandidate, suggestion.amount ?? null);
 
     const draft: ManualTransactionDraft = {
       mode,

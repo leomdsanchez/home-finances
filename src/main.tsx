@@ -15,7 +15,7 @@ if (import.meta.env.PROD) {
       void registration.update();
       setInterval(() => {
         void registration.update();
-      }, 30 * 60 * 1000);
+      }, 5 * 60 * 1000);
 
       const onFocus = () => void registration.update();
       window.addEventListener("focus", onFocus);

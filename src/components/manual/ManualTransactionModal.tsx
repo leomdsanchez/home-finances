@@ -175,6 +175,7 @@ export const ManualTransactionModal = ({
   accounts,
   categories,
   loading,
+  initialDraft,
 }: ManualTransactionModalProps) => {
   const [form, dispatch] = useReducer(formReducer, accounts, (accs) =>
     createInitialState(accs),
@@ -193,8 +194,32 @@ export const ManualTransactionModal = ({
       dispatch({ type: "reset", payload: { accounts } });
       dispatch({ type: "setStep", step: "type" });
       setError(null);
+
+      if (initialDraft) {
+        if (initialDraft.mode) {
+          dispatch({ type: "setMode", mode: initialDraft.mode });
+        }
+        ([
+          "status",
+          "accountId",
+          "toAccountId",
+          "categoryId",
+          "amount",
+          "exchangeRate",
+          "note",
+          "date",
+        ] as const).forEach((field) => {
+          const value = initialDraft[field];
+          if (value !== undefined) {
+            dispatch({ type: "setField", field, value: value as string | null });
+          }
+        });
+        if (initialDraft.step) {
+          dispatch({ type: "setStep", step: initialDraft.step });
+        }
+      }
     }
-  }, [open, accounts, categories]);
+  }, [open, accounts, categories, initialDraft]);
 
   const account = useMemo(
     () => accounts.find((a) => a.id === form.accountId) ?? accounts[0],

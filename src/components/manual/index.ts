@@ -1,2 +1,2 @@
 export { ManualTransactionModal } from "./ManualTransactionModal";
-export type { ManualTransactionModalProps } from "./types";
+export type { ManualTransactionDraft, ManualTransactionModalProps } from "./types";

@@ -14,6 +14,9 @@
   - `VITE_SUPABASE_URL=https://qonkdzfrlnpjdpesgtcj.supabase.co` (projeto fixo)
   - `VITE_SUPABASE_ANON_KEY=<anon key do projeto>`
   - Não coloque credenciais sensíveis com prefixo `VITE_` (Vite expõe no bundle do frontend).
+- Supabase Edge Functions (IA voz/imagem):
+  - `OPENAI_API_KEY=<openai key>` (configurar via `supabase secrets set ...`; ver `docs/AI_SETUP.md`)
+  - (opcional) `OPENAI_CHAT_MODEL=gpt-4o-mini`
 - `.env.test` (testes Vitest):
   - `SUPABASE_URL=https://qonkdzfrlnpjdpesgtcj.supabase.co`
   - `SUPABASE_ANON_KEY=<anon key>`

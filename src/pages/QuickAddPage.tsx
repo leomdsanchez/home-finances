@@ -8,9 +8,13 @@ import { useCurrentOrganization } from "../hooks/useCurrentOrganization";
 import { useAccounts } from "../hooks/useAccounts";
 import { useCategories } from "../hooks/useCategories";
 import { useBudgets } from "../hooks/useBudgets";
-import { ManualTransactionModal } from "../components/manual";
+import { ManualTransactionModal, type ManualTransactionDraft } from "../components/manual";
 import { RecentTransactionsCard } from "../components/RecentTransactionsCard";
 import { BudgetSummaryCard } from "../components/BudgetSummaryCard";
+import { AIMicModal, AIImageModal } from "../components/ai";
+import type { AiTransactionSuggestion } from "../services/aiTransactionService";
+import { getCurrencyDecimals } from "../lib/currency";
+import { todayYMD } from "../lib/date";
 
 type QuickAction = {
   key: "manual" | "camera" | "mic";
@@ -57,6 +61,11 @@ const QuickAddPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [showManualModal, setShowManualModal] = useState(false);
+  const [manualInitialDraft, setManualInitialDraft] = useState<ManualTransactionDraft | undefined>(
+    undefined,
+  );
+  const [showMicModal, setShowMicModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const holdTimer = useRef<number | null>(null);
   const [recentsVersion, setRecentsVersion] = useState(0);
@@ -87,7 +96,18 @@ const QuickAddPage = () => {
 
   const handleAction = (key: QuickAction["key"]) => {
     if (key === "manual") {
+      setManualInitialDraft(undefined);
       setShowManualModal(true);
+      setFabOpen(false);
+      return;
+    }
+    if (key === "mic") {
+      setShowMicModal(true);
+      setFabOpen(false);
+      return;
+    }
+    if (key === "camera") {
+      setShowImageModal(true);
       setFabOpen(false);
       return;
     }
@@ -156,6 +176,7 @@ const QuickAddPage = () => {
       clearTimeout(holdTimer.current);
     }
     holdTimer.current = window.setTimeout(() => {
+      setManualInitialDraft(undefined);
       setShowManualModal(true);
       setFabOpen(false);
     }, 400);
@@ -176,6 +197,57 @@ const QuickAddPage = () => {
     },
     [],
   );
+
+  const openManualFromSuggestion = (suggestion: AiTransactionSuggestion, transcript?: string) => {
+    const mode: ManualTransactionDraft["mode"] =
+      suggestion.type === "income" ? "income" : "expense";
+    const status: ManualTransactionDraft["status"] =
+      suggestion.status === "previsto" ? "previsto" : "realizado";
+
+    const accountIdRaw = typeof suggestion.accountId === "string" ? suggestion.accountId : "";
+    const accountId = accounts.some((a) => a.id === accountIdRaw) ? accountIdRaw : "";
+    const acc = accountId ? accounts.find((a) => a.id === accountId) : null;
+    const currency = acc?.currency ?? accounts[0]?.currency ?? "USD";
+    const decimals = getCurrencyDecimals(currency);
+    const amount =
+      typeof suggestion.amount === "number" && Number.isFinite(suggestion.amount)
+        ? suggestion.amount.toLocaleString("pt-BR", {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+          })
+        : "";
+
+    const categoryIdRaw =
+      typeof suggestion.categoryId === "string" ? suggestion.categoryId : null;
+    const categoryId = categoryIdRaw && categories.some((c) => c.id === categoryIdRaw) ? categoryIdRaw : null;
+
+    const dateRaw = typeof suggestion.date === "string" ? suggestion.date : null;
+    const date = dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : todayYMD();
+
+    const note =
+      typeof suggestion.note === "string" && suggestion.note.trim()
+        ? suggestion.note.trim()
+        : transcript ?? "";
+
+    const draft: ManualTransactionDraft = {
+      mode,
+      status,
+      accountId,
+      categoryId,
+      amount,
+      date,
+      note,
+    };
+
+    const step: ManualTransactionDraft["step"] = !draft.accountId
+      ? "account"
+      : !draft.amount
+        ? "amount"
+        : "details";
+
+    setManualInitialDraft({ ...draft, step });
+    setShowManualModal(true);
+  };
 
   return (
     <main className="page-shell items-start h-[100dvh] min-h-[100dvh] overflow-hidden">
@@ -336,12 +408,34 @@ const QuickAddPage = () => {
 
         <ManualTransactionModal
           open={showManualModal}
-          onClose={() => setShowManualModal(false)}
+          onClose={() => {
+            setShowManualModal(false);
+            setManualInitialDraft(undefined);
+          }}
           onSaved={() => setRecentsVersion((v) => v + 1)}
           organization={organization}
           accounts={accounts}
           categories={categories}
           loading={orgLoading || accLoading || catLoading}
+          initialDraft={manualInitialDraft}
+        />
+        <AIMicModal
+          open={showMicModal}
+          onClose={() => setShowMicModal(false)}
+          organizationId={organization?.id}
+          token={session?.access_token}
+          accounts={accounts}
+          categories={categories}
+          onSuggested={({ transcript, suggestion }) => openManualFromSuggestion(suggestion, transcript)}
+        />
+        <AIImageModal
+          open={showImageModal}
+          onClose={() => setShowImageModal(false)}
+          organizationId={organization?.id}
+          token={session?.access_token}
+          accounts={accounts}
+          categories={categories}
+          onSuggested={({ suggestion }) => openManualFromSuggestion(suggestion)}
         />
       </div>
     </main>

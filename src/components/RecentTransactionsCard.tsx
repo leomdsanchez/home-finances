@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import supabase from "../lib/supabaseClient";
 import type { Account, Transaction } from "../types/domain";
 import { Icon } from "./Icon";
@@ -65,6 +65,8 @@ export const RecentTransactionsCard = ({
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [internalRefresh, setInternalRefresh] = useState(0);
+  const [openActionsKey, setOpenActionsKey] = useState<string | null>(null);
+  const actionsRef = useRef<HTMLDivElement | null>(null);
 
   const accountNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -186,6 +188,16 @@ export const RecentTransactionsCard = ({
     void fetchRecents();
   }, [organizationId, limit, refreshKey, accountId, internalRefresh]);
 
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (openActionsKey && actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
+        setOpenActionsKey(null);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [openActionsKey]);
+
   const handleConfirmDelete = async () => {
     if (!deleteTarget || !organizationId) return;
     setDeleting(true);
@@ -240,6 +252,7 @@ export const RecentTransactionsCard = ({
             recents.map((item) => {
             if (item.kind === "transfer") {
               const title = item.note && item.note.trim().length > 0 ? item.note : "Transferência";
+              const key = `transfer:${item.id}`;
               return (
                 <div
                   key={item.id}
@@ -278,16 +291,34 @@ export const RecentTransactionsCard = ({
                       </p>
                       <p className="text-xs text-slate-500">{formatAmount(item.amountFrom, item.currencyFrom)}</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDeleteTarget({ kind: "transfer", id: item.id, label: title })
-                      }
-                      className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
-                      aria-label="Remover transferência"
+                    <div
+                      className="relative"
+                      ref={openActionsKey === key ? actionsRef : undefined}
                     >
-                      <Icon name="trash" className="h-3.5 w-3.5" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setOpenActionsKey((prev) => (prev === key ? null : key))}
+                        className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                        aria-label="Mais ações"
+                      >
+                        <Icon name="more" className="h-4 w-4" />
+                      </button>
+                      {openActionsKey === key ? (
+                        <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/80 z-10">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenActionsKey(null);
+                              setDeleteTarget({ kind: "transfer", id: item.id, label: title });
+                            }}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 transition hover:bg-red-50"
+                          >
+                            <Icon name="trash" className="h-4 w-4" />
+                            Remover
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               );
@@ -295,6 +326,7 @@ export const RecentTransactionsCard = ({
 
             const isExpense = item.kind === "expense";
             const title = item.note && item.note.trim().length > 0 ? item.note : isExpense ? "Saída" : "Entrada";
+            const key = `tx:${item.id}`;
             return (
               <div
                 key={item.id}
@@ -329,16 +361,34 @@ export const RecentTransactionsCard = ({
                       {formatYMDToPtBR(item.date)}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDeleteTarget({ kind: "transaction", id: item.id, label: title })
-                    }
-                    className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
-                    aria-label="Remover transação"
+                  <div
+                    className="relative"
+                    ref={openActionsKey === key ? actionsRef : undefined}
                   >
-                    <Icon name="trash" className="h-3.5 w-3.5" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setOpenActionsKey((prev) => (prev === key ? null : key))}
+                      className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                      aria-label="Mais ações"
+                    >
+                      <Icon name="more" className="h-4 w-4" />
+                    </button>
+                    {openActionsKey === key ? (
+                      <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-200/80 z-10">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenActionsKey(null);
+                            setDeleteTarget({ kind: "transaction", id: item.id, label: title });
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 transition hover:bg-red-50"
+                        >
+                          <Icon name="trash" className="h-4 w-4" />
+                          Remover
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             );

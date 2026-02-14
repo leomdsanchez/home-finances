@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ArrowRight,
   Camera,
   Hand,
@@ -34,6 +35,7 @@ import {
 } from "lucide-react";
 
 type IconName =
+  | "alert"
   | "mail"
   | "lock"
   | "arrow-right"
@@ -67,6 +69,7 @@ type IconName =
   | "list";
 
 const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
+  alert: AlertTriangle,
   mail: Mail,
   lock: Lock,
   "arrow-right": ArrowRight,

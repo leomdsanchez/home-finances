@@ -31,6 +31,7 @@ import {
   ChevronDown,
   Check,
   List,
+  Star,
   type LucideProps,
 } from "lucide-react";
 
@@ -66,7 +67,8 @@ type IconName =
   | "filter"
   | "chevron-down"
   | "check"
-  | "list";
+  | "list"
+  | "star";
 
 const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   alert: AlertTriangle,
@@ -101,6 +103,7 @@ const iconMap: Record<IconName, React.ComponentType<LucideProps>> = {
   "chevron-down": ChevronDown,
   check: Check,
   list: List,
+  star: Star,
 };
 
 interface IconProps extends LucideProps {

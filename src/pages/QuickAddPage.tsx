@@ -23,6 +23,8 @@ type QuickAction = {
   icon: IconName;
 };
 
+const QUICK_ADD_FAVORITE_META_KEY = "quick_add_favorite_action";
+
 type MenuItemKey =
   | "perfil"
   | "organizacao"
@@ -68,10 +70,17 @@ const QuickAddPage = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const holdTimer = useRef<number | null>(null);
+  const plusHoldFired = useRef(false);
+  const actionHoldTimer = useRef<number | null>(null);
+  const actionHoldFired = useRef(false);
   const [recentsVersion, setRecentsVersion] = useState(0);
   const [balance, setBalance] = useState<{ value: number; missingRate: boolean } | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
+  const [favoriteAction, setFavoriteAction] = useState<QuickAction["key"] | null>(null);
+  const favoriteActionRef = useRef<QuickAction["key"] | null>(null);
+  const [favoriteNotice, setFavoriteNotice] = useState<string | null>(null);
+  const favoriteNoticeTimer = useRef<number | null>(null);
 
   const handleMenuSelect = async (key: MenuItemKey) => {
     setMenuOpen(false);
@@ -114,6 +123,77 @@ const QuickAddPage = () => {
     // Navegações futuras para os demais fluxos.
     console.info("Ação selecionada:", key);
     setFabOpen(false);
+  };
+
+  const showFavoriteToast = (text: string) => {
+    setFavoriteNotice(text);
+    if (favoriteNoticeTimer.current) {
+      clearTimeout(favoriteNoticeTimer.current);
+    }
+    favoriteNoticeTimer.current = window.setTimeout(() => {
+      setFavoriteNotice(null);
+    }, 1600);
+  };
+
+  useEffect(() => {
+    favoriteActionRef.current = favoriteAction;
+  }, [favoriteAction]);
+
+  useEffect(() => {
+    const loadFavorite = async () => {
+      if (!session) {
+        setFavoriteAction(null);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        setFavoriteAction(null);
+        return;
+      }
+
+      const raw = (data.user.user_metadata as Record<string, unknown> | null)?.[
+        QUICK_ADD_FAVORITE_META_KEY
+      ];
+      if (raw === "manual" || raw === "mic" || raw === "camera") {
+        setFavoriteAction(raw);
+      } else {
+        setFavoriteAction(null);
+      }
+    };
+
+    void loadFavorite();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user.id]);
+
+  useEffect(
+    () => () => {
+      if (favoriteNoticeTimer.current) {
+        clearTimeout(favoriteNoticeTimer.current);
+      }
+    },
+    [],
+  );
+
+  const saveFavorite = async (key: QuickAction["key"]) => {
+    if (!session) return;
+
+    const previous = favoriteActionRef.current;
+    setFavoriteAction(key);
+
+    const { error } = await supabase.auth.updateUser({
+      data: { [QUICK_ADD_FAVORITE_META_KEY]: key },
+    });
+
+    if (error) {
+      console.error("quickadd: failed to save favorite action", error);
+      setFavoriteAction(previous);
+      showFavoriteToast("Não foi possível salvar o favorito.");
+      return;
+    }
+
+    const label = key === "mic" ? "Áudio" : key === "camera" ? "Imagem" : "Manual";
+    showFavoriteToast(`Favorito: ${label}`);
   };
 
   useEffect(() => {
@@ -175,11 +255,11 @@ const QuickAddPage = () => {
     if (holdTimer.current) {
       clearTimeout(holdTimer.current);
     }
+    plusHoldFired.current = false;
     holdTimer.current = window.setTimeout(() => {
-      setManualInitialDraft(undefined);
-      setShowManualModal(true);
-      setFabOpen(false);
-    }, 400);
+      plusHoldFired.current = true;
+      setFabOpen(true);
+    }, 420);
   };
 
   const endHold = () => {
@@ -189,10 +269,31 @@ const QuickAddPage = () => {
     }
   };
 
+  const startActionHold = (key: QuickAction["key"]) => {
+    if (actionHoldTimer.current) {
+      clearTimeout(actionHoldTimer.current);
+    }
+    actionHoldFired.current = false;
+    actionHoldTimer.current = window.setTimeout(() => {
+      actionHoldFired.current = true;
+      void saveFavorite(key);
+    }, 800);
+  };
+
+  const endActionHold = () => {
+    if (actionHoldTimer.current) {
+      clearTimeout(actionHoldTimer.current);
+      actionHoldTimer.current = null;
+    }
+  };
+
   useEffect(
     () => () => {
       if (holdTimer.current) {
         clearTimeout(holdTimer.current);
+      }
+      if (actionHoldTimer.current) {
+        clearTimeout(actionHoldTimer.current);
       }
     },
     [],
@@ -356,6 +457,11 @@ const QuickAddPage = () => {
 
       {/* FAB */}
       <div className="fixed bottom-6 right-6 z-30 flex flex-col items-end gap-3">
+        {favoriteNotice ? (
+          <div className="rounded-full bg-slate-900/90 px-3 py-2 text-xs font-medium text-white shadow-lg">
+            {favoriteNotice}
+          </div>
+        ) : null}
         <div
           className={`flex flex-col items-end gap-3 transition-all duration-200 ${
             fabOpen ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 translate-y-2"
@@ -363,30 +469,96 @@ const QuickAddPage = () => {
         >
           <button
             type="button"
-            onClick={() => handleAction("manual")}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+            onMouseDown={() => startActionHold("manual")}
+            onMouseUp={endActionHold}
+            onMouseLeave={endActionHold}
+            onTouchStart={() => startActionHold("manual")}
+            onTouchEnd={endActionHold}
+            onTouchCancel={endActionHold}
+            onClick={() => {
+              if (actionHoldFired.current) {
+                actionHoldFired.current = false;
+                return;
+              }
+              handleAction("manual");
+            }}
+            className={`relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl ${
+              (favoriteAction ?? "manual") === "manual"
+                ? "text-amber-700 ring-2 ring-amber-200"
+                : "text-slate-700 ring-1 ring-slate-200"
+            }`}
             style={{ transitionDelay: fabOpen ? "40ms" : "0ms" }}
-            aria-label="Lançamento manual"
+            aria-label="Lançamento manual (segure para favoritar)"
+            title="Segure para favoritar"
           >
             <Icon name="keyboard" className="h-5 w-5" />
+            {(favoriteAction ?? "manual") === "manual" ? (
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-white shadow">
+                <Icon name="star" className="h-3 w-3" />
+              </span>
+            ) : null}
           </button>
           <button
             type="button"
-            onClick={() => handleAction("camera")}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+            onMouseDown={() => startActionHold("camera")}
+            onMouseUp={endActionHold}
+            onMouseLeave={endActionHold}
+            onTouchStart={() => startActionHold("camera")}
+            onTouchEnd={endActionHold}
+            onTouchCancel={endActionHold}
+            onClick={() => {
+              if (actionHoldFired.current) {
+                actionHoldFired.current = false;
+                return;
+              }
+              handleAction("camera");
+            }}
+            className={`relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl ${
+              favoriteAction === "camera"
+                ? "text-amber-700 ring-2 ring-amber-200"
+                : "text-slate-700 ring-1 ring-slate-200"
+            }`}
             style={{ transitionDelay: fabOpen ? "80ms" : "0ms" }}
-            aria-label="Lançar com imagem"
+            aria-label="Lançar com imagem (segure para favoritar)"
+            title="Segure para favoritar"
           >
             <Icon name="camera" className="h-5 w-5" />
+            {favoriteAction === "camera" ? (
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-white shadow">
+                <Icon name="star" className="h-3 w-3" />
+              </span>
+            ) : null}
           </button>
           <button
             type="button"
-            onClick={() => handleAction("mic")}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+            onMouseDown={() => startActionHold("mic")}
+            onMouseUp={endActionHold}
+            onMouseLeave={endActionHold}
+            onTouchStart={() => startActionHold("mic")}
+            onTouchEnd={endActionHold}
+            onTouchCancel={endActionHold}
+            onClick={() => {
+              if (actionHoldFired.current) {
+                actionHoldFired.current = false;
+                return;
+              }
+              handleAction("mic");
+            }}
+            className={`relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl ${
+              favoriteAction === "mic"
+                ? "text-amber-700 ring-2 ring-amber-200"
+                : "text-slate-700 ring-1 ring-slate-200"
+            }`}
             style={{ transitionDelay: fabOpen ? "120ms" : "0ms" }}
-            aria-label="Lançar com áudio"
+            aria-label="Lançar com áudio (segure para favoritar)"
+            title="Segure para favoritar"
           >
             <Icon name="mic" className="h-5 w-5" />
+            {favoriteAction === "mic" ? (
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-white shadow">
+                <Icon name="star" className="h-3 w-3" />
+              </span>
+            ) : null}
           </button>
         </div>
         <button
@@ -396,11 +568,24 @@ const QuickAddPage = () => {
           onMouseLeave={endHold}
           onTouchStart={startHold}
           onTouchEnd={endHold}
-          onClick={() => setFabOpen((v) => !v)}
+          onTouchCancel={endHold}
+          onClick={() => {
+            if (plusHoldFired.current) {
+              plusHoldFired.current = false;
+              return;
+            }
+            if (fabOpen) {
+              setFabOpen(false);
+              return;
+            }
+            const preferred = favoriteAction ?? "manual";
+            handleAction(preferred);
+          }}
           className={`flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-700 active:bg-blue-800 ${
             fabOpen ? "rotate-45" : ""
           }`}
-          aria-label="Ações rápidas"
+          aria-label="Adicionar lançamento (toque para abrir favorito; segure para abrir menu)"
+          title="Toque: favorito | Segure: menu"
         >
           <Icon name={fabOpen ? "close" : "plus"} className="h-6 w-6 transition" />
         </button>

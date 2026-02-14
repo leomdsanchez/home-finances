@@ -4,12 +4,14 @@ Este projeto usa **Supabase Edge Functions** para chamar a OpenAI com segurança
 
 ## Variáveis
 - `OPENAI_API_KEY` (obrigatória)
-- `OPENAI_CHAT_MODEL` (opcional; default `gpt-4o-mini`)
+- `OPENAI_CHAT_MODEL` (opcional; default `gpt-4o-mini`, recomendado `gpt-5.2`)
+- `OPENAI_REASONING_EFFORT` (opcional; `low | medium | high`; aplicado apenas em `gpt-5.x`)
 
 ## Configurar no Supabase (recomendado)
 1) Defina os secrets no projeto:
    ```bash
-   supabase secrets set OPENAI_API_KEY="SUA_CHAVE" OPENAI_CHAT_MODEL="gpt-4o-mini"
+   # Exemplo (reasoner):
+   supabase secrets set OPENAI_API_KEY="SUA_CHAVE" OPENAI_CHAT_MODEL="gpt-5.2" OPENAI_REASONING_EFFORT="high"
    ```
 
 2) Deploy das funções:
@@ -21,4 +23,3 @@ Este projeto usa **Supabase Edge Functions** para chamar a OpenAI com segurança
 ## Funções criadas
 - `ai-transaction-audio`: recebe um áudio, transcreve (Whisper) e gera sugestão de lançamento.
 - `ai-transaction-image`: recebe uma imagem (recibo) e gera sugestão de lançamento.
-

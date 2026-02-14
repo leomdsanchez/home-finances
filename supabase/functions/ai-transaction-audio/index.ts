@@ -22,6 +22,16 @@ const parseJson = (raw: string | null) => {
   }
 };
 
+type ReasoningEffort = "low" | "medium" | "high";
+
+const normalizeReasoningEffort = (raw: string | null): ReasoningEffort | null => {
+  const v = raw?.trim().toLowerCase();
+  if (v === "low" || v === "medium" || v === "high") return v;
+  return null;
+};
+
+const isGpt5Model = (model: string) => model.trim().toLowerCase().startsWith("gpt-5");
+
 const pickAccounts = (accounts: unknown) =>
   Array.isArray(accounts)
     ? accounts
@@ -79,6 +89,7 @@ const callChat = async (
   },
 ) => {
   const model = Deno.env.get("OPENAI_CHAT_MODEL") || "gpt-4o-mini";
+  const reasoningEffort = normalizeReasoningEffort(Deno.env.get("OPENAI_REASONING_EFFORT"));
 
   const prompt = [
     "Extraia um lançamento financeiro a partir de uma transcrição em português (pt-BR).",
@@ -111,21 +122,32 @@ const callChat = async (
     },
   };
 
+  const body: Record<string, unknown> = {
+    model,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "developer", content: prompt },
+      { role: "user", content: JSON.stringify(userPayload) },
+    ],
+    // NOTE: gpt-5.x rejects `max_tokens` and also does not support setting `temperature=0`.
+    max_completion_tokens: 600,
+  };
+
+  if (!isGpt5Model(model)) {
+    body.temperature = 0;
+  }
+
+  if (reasoningEffort && isGpt5Model(model)) {
+    body.reasoning_effort = reasoningEffort;
+  }
+
   const resp = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "developer", content: prompt },
-        { role: "user", content: JSON.stringify(userPayload) },
-      ],
-    }),
+    body: JSON.stringify(body),
   });
 
   const payload = await resp.json().catch(() => null);

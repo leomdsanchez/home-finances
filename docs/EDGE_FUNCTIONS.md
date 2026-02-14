@@ -5,18 +5,22 @@
 - Projeto inicializado (pasta `supabase/` com `config.toml`).
 - Variáveis de ambiente:
   - `SUPABASE_ACCESS_TOKEN` (token pessoal da CLI com permissão de deploy).
-  - `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (usadas nas funções, setar em secrets).
+  - (se aplicável) secrets das funções, ex.: `OPENAI_API_KEY` (ver `docs/AI_SETUP.md`).
 - Docker opcional (a CLI avisa se não estiver rodando; para deploy simples não é obrigatório).
 
 ## Estrutura
 - Cada função fica em `supabase/functions/<nome>/index.ts`.
 - Exemplo: `supabase/functions/balance/index.ts`.
 
-## Configurar secrets no projeto (uma vez)
+## Configurar secrets no projeto (quando necessário)
+Obs: no runtime do Supabase, as Edge Functions normalmente já recebem `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` automaticamente, e esses nomes são reservados (não setar via `supabase secrets set`).
+
+Exemplo (IA):
 ```sh
 supabase secrets set \
-  SUPABASE_URL=$SUPABASE_URL \
-  SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+  OPENAI_API_KEY="SUA_CHAVE" \
+  OPENAI_CHAT_MODEL="gpt-5.2" \
+  OPENAI_REASONING_EFFORT="high"
 ```
 
 ## Deploy

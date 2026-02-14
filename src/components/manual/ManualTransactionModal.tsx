@@ -3,6 +3,7 @@ import {
   useMemo,
   useReducer,
   useState,
+  useRef,
   type InputHTMLAttributes,
   type FormEvent,
   type ReactNode,
@@ -180,6 +181,8 @@ export const ManualTransactionModal = ({
   const [form, dispatch] = useReducer(formReducer, accounts, (accs) =>
     createInitialState(accs),
   );
+  const prevOpenRef = useRef(false);
+  const prevAccountsCountRef = useRef(accounts.length);
   const { rates } = useExchangeDefaults(organization?.id);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,7 +193,11 @@ export const ManualTransactionModal = ({
   };
 
   useEffect(() => {
-    if (open) {
+    const justOpened = open && !prevOpenRef.current;
+    const accountsBecameAvailable =
+      open && accounts.length > 0 && prevAccountsCountRef.current === 0;
+
+    if (justOpened || accountsBecameAvailable) {
       dispatch({ type: "reset", payload: { accounts } });
       dispatch({ type: "setStep", step: "type" });
       setError(null);
@@ -219,7 +226,10 @@ export const ManualTransactionModal = ({
         }
       }
     }
-  }, [open, accounts, categories, initialDraft]);
+
+    prevOpenRef.current = open;
+    prevAccountsCountRef.current = accounts.length;
+  }, [open, accounts, initialDraft]);
 
   const account = useMemo(
     () => accounts.find((a) => a.id === form.accountId) ?? accounts[0],

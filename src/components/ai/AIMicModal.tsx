@@ -36,7 +36,7 @@ export const AIMicModal = ({
   const [audioName, setAudioName] = useState<string>("audio.webm");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [transcript, setTranscript] = useState<string>("");
+  const [hasRecorder, setHasRecorder] = useState(true);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -54,7 +54,6 @@ export const AIMicModal = ({
     setAudioName("audio.webm");
     setSending(false);
     setError(null);
-    setTranscript("");
     chunksRef.current = [];
   }, [open]);
 
@@ -64,6 +63,23 @@ export const AIMicModal = ({
     };
   }, [audioUrl]);
 
+  useEffect(() => {
+    if (!open) {
+      try {
+        mediaRecorderRef.current?.stop();
+      } catch {
+        // ignore
+      }
+      stopStream();
+      setRecording(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setHasRecorder(typeof window !== "undefined" && "MediaRecorder" in window);
+  }, [open]);
+
   const stopStream = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -71,9 +87,12 @@ export const AIMicModal = ({
 
   const startRecording = async () => {
     setError(null);
-    setTranscript("");
     chunksRef.current = [];
     try {
+      if (!("MediaRecorder" in window)) {
+        setError("Seu navegador não suporta gravação de áudio.");
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -127,7 +146,6 @@ export const AIMicModal = ({
         audio: audioBlob,
         filename: audioName,
       });
-      setTranscript(result.transcript);
       onSuggested(result);
       onClose();
     } catch (err) {
@@ -164,7 +182,11 @@ export const AIMicModal = ({
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             {!recording ? (
-              <Button onClick={startRecording} disabled={!canUse || sending} className="flex-1">
+              <Button
+                onClick={startRecording}
+                disabled={!canUse || sending || !hasRecorder}
+                className="flex-1"
+              >
                 <Icon name="mic" className="h-4 w-4" />
                 Gravar
               </Button>
@@ -198,13 +220,6 @@ export const AIMicModal = ({
             </div>
           )}
 
-          {transcript ? (
-            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-              <p className="text-xs font-semibold text-slate-700">Transcrição</p>
-              <p className="text-sm text-slate-700">{transcript}</p>
-            </div>
-          ) : null}
-
           {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
           <Button onClick={handleSend} disabled={!canUse || sending} className="w-full">
@@ -231,4 +246,3 @@ export const AIMicModal = ({
     </div>
   );
 };
-

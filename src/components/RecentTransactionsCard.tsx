@@ -4,6 +4,7 @@ import type { Account, Transaction } from "../types/domain";
 import { Icon } from "./Icon";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { deleteTransaction, deleteTransfer } from "../services/transactionService";
+import { formatAmount } from "../lib/currency";
 
 type TransferItem = {
   kind: "transfer";
@@ -195,15 +196,6 @@ export const RecentTransactionsCard = ({
     } finally {
       setDeleting(false);
     }
-  };
-
-  const formatAmount = (value: number, currency: string) => {
-    const code = currency.toUpperCase();
-    const noCents = code === "UYU";
-    return `${value.toLocaleString("pt-BR", {
-      minimumFractionDigits: noCents ? 0 : 2,
-      maximumFractionDigits: noCents ? 0 : 2,
-    })} ${code}`;
   };
 
   const containerClassName = `space-y-3 ${fill ? "flex min-h-0 flex-col" : ""} ${className}`.trim();

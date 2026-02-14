@@ -148,11 +148,11 @@ const QuickAddPage = () => {
 
   const formatBalanceValue = (value?: number, currency?: string) => {
     if (typeof value !== "number" || Number.isNaN(value)) return "—";
-    const label = currency ? currency.toUpperCase() : "";
-    const noCents = label === "UYU";
+    const code = currency ? currency.toUpperCase() : "";
+    const decimals = code === "UYU" || ["ARS", "CLP", "COP", "MXN", "PYG", "DOP", "PEN"].includes(code) ? 0 : 2;
     return value.toLocaleString("pt-BR", {
-      minimumFractionDigits: noCents ? 0 : 2,
-      maximumFractionDigits: noCents ? 0 : 2,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     });
   };
 
@@ -301,6 +301,7 @@ const QuickAddPage = () => {
                 organizationId={organization?.id}
                 accounts={accounts}
                 refreshKey={recentsVersion}
+                onDeleted={() => setRecentsVersion((v) => v + 1)}
                 fill
                 className="h-full"
               />

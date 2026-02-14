@@ -10,15 +10,7 @@ import { useCategories } from "../hooks/useCategories";
 import { useTransactions } from "../hooks/useTransactions";
 import type { Transaction, Category } from "../types/domain";
 import type { TransactionFilters } from "../services/transactionService";
-
-const formatAmount = (value: number, currency: string) => {
-  const code = currency.toUpperCase();
-  const noCents = code === "UYU";
-  return `${value.toLocaleString("pt-BR", {
-    minimumFractionDigits: noCents ? 0 : 2,
-    maximumFractionDigits: noCents ? 0 : 2,
-  })} ${code}`;
-};
+import { formatAmount } from "../lib/currency";
 
 type EditState = {
   transaction: Transaction;

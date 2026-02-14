@@ -3,28 +3,26 @@ import { useCurrentOrganization } from "../hooks/useCurrentOrganization";
 import { useAccounts } from "../hooks/useAccounts";
 import { useAccountBalances } from "../hooks/useAccountBalances";
 import { RecentTransactionsCard } from "../components/RecentTransactionsCard";
+import { formatAmount } from "../lib/currency";
 import type { Account } from "../types/domain";
-
-const formatBalance = (value: number, currency: string) => {
-  const code = currency.toUpperCase();
-  const noCents = code === "UYU";
-  return `${value.toLocaleString("pt-BR", {
-    minimumFractionDigits: noCents ? 0 : 2,
-    maximumFractionDigits: noCents ? 0 : 2,
-  })} ${code}`;
-};
 
 const DashboardPage = () => {
   const { organization } = useCurrentOrganization();
   const { accounts, loading: accLoading } = useAccounts(organization?.id);
-  const { balances } = useAccountBalances(organization?.id);
+  const { balances, refresh: refreshBalances } = useAccountBalances(organization?.id);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!selectedAccountId && accounts.length > 0) {
       setSelectedAccountId(accounts[0].id);
     }
   }, [accounts, selectedAccountId]);
+
+  const handleDeleted = () => {
+    setRefreshKey((v) => v + 1);
+    refreshBalances();
+  };
 
   const renderAccountCard = (acc: Account) => {
     const active = selectedAccountId === acc.id;
@@ -43,7 +41,7 @@ const DashboardPage = () => {
           <p className="text-xs text-orange-100/80">{acc.currency}</p>
         </div>
         <p className="text-lg font-semibold tracking-tight">
-          {balance !== undefined ? formatBalance(balance, acc.currency) : "—"}
+          {balance !== undefined ? formatAmount(balance, acc.currency) : "—"}
         </p>
       </button>
     );
@@ -78,7 +76,8 @@ const DashboardPage = () => {
                 organizationId={organization?.id}
                 accounts={accounts}
                 accountId={selectedAccountId}
-                refreshKey={0}
+                refreshKey={refreshKey}
+                onDeleted={handleDeleted}
                 fill
                 className="h-full"
               />

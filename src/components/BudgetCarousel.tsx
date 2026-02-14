@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import supabase from "../lib/supabaseClient";
 import type { Budget, Category } from "../types/domain";
 import { Icon } from "./Icon";
+import { formatAmount } from "../lib/currency";
 
 type Props = {
   organizationId?: string;
@@ -79,17 +80,6 @@ export const BudgetCarousel = ({
 
     void fetchExpenses();
   }, [organizationId, budgets]);
-
-  const formatAmount = (value: number, currency: string) => {
-    const code = currency.toUpperCase();
-    const noCents = code === "UYU";
-    return (
-      value.toLocaleString("pt-BR", {
-        minimumFractionDigits: noCents ? 0 : 2,
-        maximumFractionDigits: noCents ? 0 : 2,
-      }) + ` ${code}`
-    );
-  };
 
   const hasError = error || spentError;
 

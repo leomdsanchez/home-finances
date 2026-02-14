@@ -6,6 +6,7 @@ import {
 } from "../mappers/transaction";
 import type { Transaction } from "../types/domain";
 import type { CreateTransferParams } from "../types/serviceInputs";
+import { roundForCurrency } from "../lib/currency";
 
 export const createTransaction = async (
   client: SupabaseClient,
@@ -245,7 +246,7 @@ export const createTransfer = async (
   };
 
   const convertedAmount =
-    exchangeRate > 0 ? Math.round((amount / exchangeRate) * 100) / 100 : 0;
+    exchangeRate > 0 ? roundForCurrency(amount / exchangeRate, currencyTo) : 0;
 
   const toTransaction: NewTransactionInput = {
     organizationId: params.organizationId,

@@ -149,12 +149,15 @@ serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("FUNCTION_SUPABASE_URL");
-    const anonKey = Deno.env.get("FUNCTION_SUPABASE_ANON_KEY");
-    const serviceRoleKey = Deno.env.get("FUNCTION_SUPABASE_SERVICE_ROLE_KEY");
+    // Supabase Edge Functions typically expose SUPABASE_* vars by default.
+    // Keep FUNCTION_SUPABASE_* as fallback for local/dev setups that rely on them.
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("FUNCTION_SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("FUNCTION_SUPABASE_ANON_KEY");
+    const serviceRoleKey =
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("FUNCTION_SUPABASE_SERVICE_ROLE_KEY");
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
 
-    if (!supabaseUrl || !anonKey || !serviceRoleKey || !openaiKey) {
+    if (!supabaseUrl || !serviceRoleKey || !openaiKey) {
       console.error("ai-transaction-image: missing env", {
         supabaseUrl: !!supabaseUrl,
         anonKey: !!anonKey,
@@ -170,7 +173,7 @@ serve(async (req: Request) => {
       return jsonResponse(401, { error: "Missing/invalid Authorization header" });
     }
 
-    const authClient = createClient(supabaseUrl, anonKey);
+    const authClient = createClient(supabaseUrl, anonKey || serviceRoleKey);
     const { data: userResult, error: userError } = await authClient.auth.getUser(token);
     const userId = userResult?.user?.id ?? null;
     if (userError || !userId) {
@@ -236,4 +239,3 @@ serve(async (req: Request) => {
     });
   }
 });
-

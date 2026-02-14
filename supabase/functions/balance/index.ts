@@ -64,11 +64,14 @@ serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("FUNCTION_SUPABASE_URL");
-    const anonKey = Deno.env.get("FUNCTION_SUPABASE_ANON_KEY");
-    const serviceRoleKey = Deno.env.get("FUNCTION_SUPABASE_SERVICE_ROLE_KEY");
+    // Supabase Edge Functions typically expose SUPABASE_* vars by default.
+    // Keep FUNCTION_SUPABASE_* as fallback for local/dev setups that rely on them.
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("FUNCTION_SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("FUNCTION_SUPABASE_ANON_KEY");
+    const serviceRoleKey =
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("FUNCTION_SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       console.error("balance: missing env", {
         supabaseUrl: !!supabaseUrl,
         anonKey: !!anonKey,
@@ -84,7 +87,7 @@ serve(async (req: Request) => {
     }
 
     // valida token de usuário
-    const authClient = createClient(supabaseUrl, anonKey);
+    const authClient = createClient(supabaseUrl, anonKey || serviceRoleKey);
     const { data: userResult, error: userError } = await authClient.auth.getUser(token);
     const userId = userResult?.user?.id ?? null;
     if (userError || !userId) {

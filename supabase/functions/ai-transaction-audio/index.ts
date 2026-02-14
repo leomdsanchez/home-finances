@@ -53,44 +53,6 @@ const pickCategories = (categories: unknown) =>
         .filter((c) => c.id && c.name)
     : [];
 
-const normalizeWhitespace = (value: string) => value.replace(/\s+/g, " ").trim();
-
-const cleanNote = (note: unknown, amount: unknown) => {
-  if (typeof note !== "string") return null;
-  let n = normalizeWhitespace(note);
-  if (!n) return null;
-
-  // Remove obvious money amounts (currency symbol/code/word + number).
-  n = n
-    .replace(/(?:R\\$|US\\$|€|£)\s*\d[\d.,]*/gi, "")
-    .replace(/\b(?:BRL|USD|EUR|UYU|ARS|CLP|COP|MXN|PYG|DOP|PEN|GBP)\s*\d[\d.,]*\b/gi, "")
-    .replace(
-      /\b\d[\d.,]*\s*(?:reais|real|pesos|peso|d[óo]lares?|d[óo]lar|euros?|eur|libras?|libra)\b/gi,
-      "",
-    );
-
-  // If we know the numeric amount, try to remove it when present as a standalone token.
-  const amountNum = typeof amount === "number" && Number.isFinite(amount) ? amount : null;
-  if (amountNum !== null) {
-    const variants = new Set<string>();
-    variants.add(String(amountNum));
-    variants.add(amountNum.toFixed(2));
-    variants.add(amountNum.toFixed(2).replace(".", ","));
-    if (Number.isInteger(amountNum)) variants.add(String(Math.trunc(amountNum)));
-
-    for (const v of variants) {
-      const escaped = v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      n = n.replace(new RegExp(`(^|\\s)${escaped}(?=$|\\s)`, "g"), "$1");
-    }
-  }
-
-  n = normalizeWhitespace(n);
-  n = n.replace(/\(\s*\)/g, "").replace(/\[\s*\]/g, "").replace(/\{\s*\}/g, "");
-  n = n.replace(/^[,;:.-]+/, "").replace(/[,;:.-]+$/, "");
-  n = normalizeWhitespace(n);
-  return n || null;
-};
-
 const callWhisper = async (openaiKey: string, file: File): Promise<string> => {
   const fd = new FormData();
   fd.append("model", "whisper-1");
@@ -139,8 +101,16 @@ const callChat = async (
     "- type deve ser: 'expense' ou 'income'.",
     "- status deve ser: 'realizado' ou 'previsto' (default: 'realizado').",
     "- date no formato YYYY-MM-DD (default: TODAY).",
-    "- note deve ser SOMENTE a descrição do gasto/receita (ex.: nome do local), sem incluir valor/moeda, conta, data ou pessoa.",
+    "- note deve ser SOMENTE a descrição do gasto/receita (ex.: nome do local/serviço), sem incluir valor/moeda, conta, data ou pessoa.",
+    "- Nunca repita o valor em note. Se houver números em note, eles devem ser parte do nome (ex.: 7-Eleven), nunca o valor do lançamento.",
+    "- Se a transcrição contiver apenas valor/conta (sem descrição), retorne note=null.",
+    "- Antes de responder, confira: note não contém R$, US$, BRL, USD, nem palavras como 'reais'/'dólares' junto de números; se contiver, remova essas partes e se não sobrar descrição, use null.",
     "- Você receberá userName e o número de membros da organização apenas como contexto para interpretar \"minha conta\".",
+    "",
+    "Exemplos (entrada -> saída):",
+    '1) "Mercado, 120 reais, Nubank" -> note="Mercado", amount=120, accountId=<Nubank>',
+    '2) "Uber 32 reais no cartão" -> note="Uber", amount=32',
+    '3) "32 reais Nubank" -> note=null, amount=32, accountId=<Nubank>',
     "",
     "Responda SOMENTE com um JSON válido.",
   ].join("\n");
@@ -159,7 +129,7 @@ const callChat = async (
       categoryId: "string | null",
       amount: "number | null",
       date: "YYYY-MM-DD | null",
-      note: "string | null (descricao apenas; sem valores/conta/moeda/data)",
+      note: "string | null (descricao apenas; nunca repetir valor/moeda/conta/data/pessoa)",
       confidence: "number (0..1) | null",
       warnings: "string[]",
     },
@@ -211,10 +181,7 @@ const callChat = async (
   if (typeof parsed !== "object" || parsed === null) {
     throw new Error("Invalid model JSON");
   }
-
-  const suggestion = parsed as Record<string, unknown>;
-  suggestion.note = cleanNote(suggestion.note, suggestion.amount);
-  return suggestion;
+  return parsed;
 };
 
 serve(async (req: Request) => {
